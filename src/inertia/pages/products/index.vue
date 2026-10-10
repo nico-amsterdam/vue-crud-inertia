@@ -1,0 +1,194 @@
+<script setup lang="ts">
+import { Icon } from '@iconify/vue'
+import { router, Link } from '@inertiajs/vue3'
+import { computed, onMounted, ref } from 'vue'
+import type { ProductType } from '../../../types/product'
+
+interface Props {
+  products: ProductType[]
+  errors?: {
+    read?: string
+    write?: string
+  }
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  errors: () => ({ read: '', write: '' }),
+})
+
+const searchKey = ref('')
+const productList = computed(() => props.products)
+const filteredProducts = computed(() => {
+  return productList.value.filter(product =>
+    product.productName.toLowerCase().indexOf(searchKey.value.toLowerCase()) !== -1
+    || product.description.toLowerCase().indexOf(searchKey.value.toLowerCase()) !== -1
+    || (product.price && product.price.toString().indexOf(searchKey.value) !== -1))
+})
+
+function refresh() {
+  router.reload()
+}
+
+onMounted(() => {
+  document.getElementById('search-element')?.focus()
+})
+</script>
+
+<template>
+  <main id="main" class="product-list">
+    <div class="form-actions">
+      <div class="error" v-if="errors.write || errors.read">
+        {{ errors.write }}
+        <p v-if="errors.read && errors.write" />
+        {{ errors.read }}
+      </div>
+      <Link class="btn btn-default" href="/products/new">
+        <Icon icon="tabler:plus" title="Add product" class="plussign" />
+        Add product
+      </Link>
+      <button type="button" class="btn refresh" title="Refresh list" @click="refresh">
+        <Icon flip="horizontal" icon="tabler:refresh" />
+      </button>
+    </div>
+    <div class="filters row">
+      <div class="form-group product-search">
+        <label for="search-element">Search</label>
+        <input v-model="searchKey" class="form-control" id="search-element"
+          aria-description="Filter products by name, description or price" />
+      </div>
+    </div>
+    <table class="table">
+      <thead>
+        <tr>
+          <th scope="col">Name</th>
+          <th scope="col">Description</th>
+          <th scope="col" class="price">Price</th>
+          <th scope="col" class="table-actions">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="product in filteredProducts" :key="product.id">
+          <td>
+            <Link v-if="product.id >= 0" :href="`/products/${product.id}/edit`">{{
+              product.productName }}</Link>
+            <span v-if="product.id < 0">{{ product.productName }}</span>
+          </td>
+          <td>
+            {{ product.description }}
+          </td>
+          <td class="price">
+            {{ product.price }} €
+          </td>
+          <td class="table-actions">
+            <Link v-if="product.id >= 0" class="btn btn-warning btn-xs" :href="`/products/${product.id}/edit`">Edit</Link>
+            {{ ' ' }}
+            <Link v-if="product.id >= 0" class="btn btn-danger btn-xs" :href="`/products/${product.id}/delete`">Delete</Link>
+          </td>
+        </tr>
+      </tbody>
+      <tfoot id="search-results-footer">
+        <tr id="announceResults" aria-live="assertive" aria-atomic="true">
+          <td v-if="productList.length === 0" id="noResults" colspan="4">No products available</td>
+          <td v-else-if="filteredProducts.length === 0" id="noResults" colspan="4">No products match your search</td>
+        </tr>
+      </tfoot>
+    </table>
+  </main>
+</template>
+
+<style>
+/* Skip link for accessibility - WCAG 2.4.1 Bypass Blocks */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: #000;
+  color: #fff;
+  padding: 8px 16px;
+  z-index: 10000;
+  text-decoration: none;
+  font-weight: bold;
+  font-size: 14px;
+  transition: top 0.2s ease-in-out
+}
+
+.skip-link:focus {
+  top: 0;
+  outline: 2px solid #fff;
+  outline-offset: 2px
+}
+
+.form-group {
+  max-width: 500px
+}
+
+.form-actions {
+  padding: 10px 0
+}
+
+.plussign {
+  vertical-align: bottom;
+  font-size: 24px
+}
+
+.refresh {
+  float: right;
+  background: none;
+  border: none;
+  padding: 0
+}
+
+.btn.refresh:active {
+  box-shadow: none
+}
+
+.refresh svg {
+  font-size: 24px;
+  margin: 5px 5px 0 5px
+}
+
+@keyframes spin {
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.refresh:active svg {
+  color: lightblue;
+  animation: spin 500ms linear 1
+}
+
+.refresh:not(:active) svg {
+  /* keep color for 0.5 seconds */
+  transition: color 500ms step-end
+}
+
+@media (min-width: 992px) {
+
+  body .product-list .table .price {
+    padding-right: 28px;
+    width: 130px
+  }
+}
+
+@media (min-width: 1200px) {
+
+  body .product-list .table .price {
+    padding-right: 58px;
+    width: 160px
+  }
+}
+
+.lang-en .table-actions {
+  width: 112px
+}
+
+.lang-es .table-actions {
+  width: 132px
+}
+
+.product-list .table .price {
+  width: 102px;
+  text-align: right
+}
+</style>
