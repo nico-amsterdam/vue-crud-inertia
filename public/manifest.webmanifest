@@ -1,7 +1,7 @@
 {
-  "name": "Vue CRUD Nuxt demo - on Cloudflare with WebAuthn authentication",
-  "short_name": "Vue CRUD Nuxt demo",
-  "description": "CRUD demo hosted on Cloudflare. Authenticate with WebAuthn.",
+  "name": "Vue CRUD Inertia demo",
+  "short_name": "Vue CRUD Inertia demo",
+  "description": "CRUD demo",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0a0a",
