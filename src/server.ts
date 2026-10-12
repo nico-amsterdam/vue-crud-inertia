@@ -1,27 +1,49 @@
-import { Hono } from 'hono'
-import { serveStatic } from 'hono/bun'
+import { Hono, type Context } from 'hono'
+import { serveStatic } from 'hono/serve-static'
 import { raw } from 'hono/html'
 import {
   createInertia,
   createViteHtmlRenderer,
-  readViteManifest,
   render,
   type InertiaVariables,
 } from '@sneakylenny/inertia-hono'
-import { join, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { asc, eq } from 'drizzle-orm'
+import { getDB, tables } from './db/index.js'
 import type { ProductBaseType, ProductType } from './types/product.js'
+import manifest from './generated/manifest.js'
 
 const isDev = process.env.NODE_ENV !== 'production'
-const distRoot = resolve(join(fileURLToPath(new URL('.', import.meta.url)), '..', 'dist'))
 
-export const app = new Hono<{ Variables: InertiaVariables }>()
+type AppEnv = {
+  Variables: InertiaVariables
+  Bindings: {
+    ASSETS?: { fetch: typeof fetch }
+  }
+}
 
-app.use('/css/*', serveStatic({ root: './public' }))
-app.use('/manifest.webmanifest', serveStatic({ root: './public' }))
+export const app = new Hono<AppEnv>()
+
+function staticServe(root: string) {
+  return serveStatic({
+    root,
+    getContent: async (path: string, c: Context<AppEnv>) => {
+      if (typeof Bun !== 'undefined') {
+        const file = Bun.file(path)
+        return await file.exists() ? (file as Blob) : null
+      }
+      const assets = c.env.ASSETS
+      if (!assets) return null
+      const response = await assets.fetch(c.req.url)
+      return response.ok ? response : null
+    },
+  })
+}
+
+app.use('/css/*', staticServe('./public'))
+app.use('/manifest.webmanifest', staticServe('./public'))
 
 if (!isDev) {
-  app.use('/assets/*', serveStatic({ root: './dist' }))
+  app.use('/assets/*', staticServe('./dist'))
 }
 
 const { middleware } = createInertia({
@@ -29,7 +51,7 @@ const { middleware } = createInertia({
   renderHtml: createViteHtmlRenderer({
     dev: isDev,
     entry: 'src/inertia/main.ts',
-    manifest: isDev ? null : await readViteManifest(distRoot),
+    manifest: isDev ? null : manifest,
     htmlAttrs: { class: 'retro' },
     head: raw('<link rel="stylesheet" href="/css/bootstrap3-un.css" />'),
   }),
@@ -38,15 +60,44 @@ const { middleware } = createInertia({
 app.use(middleware)
 
 /*
- * In-memory product store
+ * Database-backed product store
  */
 
-let nextId = 4
-const products: ProductType[] = [
-  { id: 1, productName: 'T-shirt', description: 'A nice cotton t-shirt', price: 19.99, modifiedAt: null },
-  { id: 2, productName: 'Jeans', description: 'Blue denim jeans', price: 49.99, modifiedAt: null },
-  { id: 3, productName: 'Sneakers', description: 'Comfortable running shoes', price: 89.99, modifiedAt: null },
-]
+type DBProduct = typeof tables.products.$inferSelect
+
+const DEFAULT_USER = 'system'
+
+function toProduct(dbProduct: DBProduct): ProductType {
+  return {
+    id: dbProduct.id,
+    productName: dbProduct.name,
+    description: dbProduct.description,
+    price: dbProduct.price === null ? null : dbProduct.price / 100,
+    modifiedAt: dbProduct.modifiedAt ? new Date(dbProduct.modifiedAt).toISOString() : null,
+  }
+}
+
+async function loadProducts(): Promise<ProductType[]> {
+  const dbProducts = await getDB()
+    .select()
+    .from(tables.products)
+    .orderBy(asc(tables.products.name))
+  return dbProducts.map(toProduct)
+}
+
+async function productNameExists(productName: string, excludeId?: number): Promise<boolean> {
+  const existing = await getDB()
+    .select()
+    .from(tables.products)
+    .where(eq(tables.products.name, productName))
+    .get()
+  if (!existing) return false
+  return excludeId === undefined || existing.id !== excludeId
+}
+
+function priceToCents(price: number | null): number | null {
+  return price === null ? null : Math.round(price * 100)
+}
 
 function validateProduct(body: Partial<ProductBaseType>): { valid: true; data: ProductBaseType } | { valid: false; errors: string[] } {
   const errors: string[] = []
@@ -84,56 +135,111 @@ function validateProduct(body: Partial<ProductBaseType>): { valid: true; data: P
 
 app.get('/', c => c.redirect('/products'))
 
-app.get('/products', c => render(c, 'products/index', { products }))
+app.get('/products', async (c) => {
+  const products = await loadProducts()
+  return render(c, 'products/index', { products })
+})
 
-app.get('/products/new', c => render(c, 'products/new', { products }))
+app.get('/products/new', async (c) => {
+  const products = await loadProducts()
+  return render(c, 'products/new', { products })
+})
 
 app.post('/products', async (c) => {
   const body = await c.req.json<Partial<ProductBaseType>>()
   const result = validateProduct(body)
+  const products = await loadProducts()
+
   if (!result.valid) {
     return render(c, 'products/new', { products, errors: { write: result.errors.join('. ') } })
   }
 
-  const newProduct: ProductType = { id: nextId++, ...result.data }
-  products.push(newProduct)
-  return c.redirect('/products', 303)
+  if (await productNameExists(result.data.productName)) {
+    return render(c, 'products/new', { products, errors: { write: 'A product with this name already exists' } })
+  }
+
+  try {
+    await getDB().insert(tables.products).values({
+      name: result.data.productName,
+      description: result.data.description,
+      price: priceToCents(result.data.price),
+      createdBy: DEFAULT_USER,
+    })
+    return c.redirect('/products', 303)
+  } catch {
+    return render(c, 'products/new', { products, errors: { write: 'Could not create product' } })
+  }
 })
 
-app.get('/products/:id/edit', (c) => {
+app.get('/products/:id/edit', async (c) => {
   const id = Number(c.req.param('id'))
-  const product = products.find(p => p.id === id) ?? null
-  if (!product) return c.notFound()
+  const dbProduct = await getDB()
+    .select()
+    .from(tables.products)
+    .where(eq(tables.products.id, id))
+    .get()
+  if (!dbProduct) return c.notFound()
+  const product = toProduct(dbProduct)
   return render(c, 'products/edit', { product })
 })
 
 app.patch('/products/:id', async (c) => {
   const id = Number(c.req.param('id'))
-  const index = products.findIndex(p => p.id === id)
-  if (index === -1) return c.notFound()
+  const dbProduct = await getDB()
+    .select()
+    .from(tables.products)
+    .where(eq(tables.products.id, id))
+    .get()
+  if (!dbProduct) return c.notFound()
 
   const body = await c.req.json<Partial<ProductBaseType>>()
   const result = validateProduct(body)
   if (!result.valid) {
-    return render(c, 'products/edit', { product: products[index], errors: { write: result.errors.join('. ') } })
+    return render(c, 'products/edit', { product: toProduct(dbProduct), errors: { write: result.errors.join('. ') } })
   }
 
-  products[index] = { id, ...result.data }
-  return c.redirect('/products', 303)
+  if (await productNameExists(result.data.productName, id)) {
+    return render(c, 'products/edit', { product: toProduct(dbProduct), errors: { write: 'A product with this name already exists' } })
+  }
+
+  try {
+    await getDB()
+      .update(tables.products)
+      .set({
+        name: result.data.productName,
+        description: result.data.description,
+        price: priceToCents(result.data.price),
+        modifiedBy: DEFAULT_USER,
+        modifiedAt: new Date(),
+      })
+      .where(eq(tables.products.id, id))
+    return c.redirect('/products', 303)
+  } catch {
+    return render(c, 'products/edit', { product: toProduct(dbProduct), errors: { write: 'Could not update product' } })
+  }
 })
 
-app.get('/products/:id/delete', (c) => {
+app.get('/products/:id/delete', async (c) => {
   const id = Number(c.req.param('id'))
-  const product = products.find(p => p.id === id) ?? null
-  if (!product) return c.notFound()
+  const dbProduct = await getDB()
+    .select()
+    .from(tables.products)
+    .where(eq(tables.products.id, id))
+    .get()
+  if (!dbProduct) return c.notFound()
+  const product = toProduct(dbProduct)
   return render(c, 'products/delete', { product })
 })
 
-app.delete('/products/:id', (c) => {
+app.delete('/products/:id', async (c) => {
   const id = Number(c.req.param('id'))
-  const index = products.findIndex(p => p.id === id)
-  if (index === -1) return c.notFound()
+  const dbProduct = await getDB()
+    .select()
+    .from(tables.products)
+    .where(eq(tables.products.id, id))
+    .get()
+  if (!dbProduct) return c.notFound()
 
-  products.splice(index, 1)
+  await getDB().delete(tables.products).where(eq(tables.products.id, id))
   return c.redirect('/products', 303)
 })
