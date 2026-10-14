@@ -22,7 +22,7 @@ onMounted(() => {
     </div>
     <div class="form-group">
       <label for="edit-description">Description</label>
-      <textarea class="form-control" id="edit-description" rows="3" v-model="theProduct.description" required
+      <textarea class="form-control" id="edit-description" rows="3" v-model="theProduct.description"
         maxlength="300"></textarea>
     </div>
     <div class="form-group">

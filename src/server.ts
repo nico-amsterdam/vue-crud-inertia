@@ -103,17 +103,19 @@ function validateProduct(body: Partial<ProductBaseType>): { valid: true; data: P
   const errors: string[] = []
   const productName = typeof body.productName === 'string' ? body.productName.trim() : ''
   const description = typeof body.description === 'string' ? body.description.trim() : ''
-  const price = body.price === null || body.price === undefined ? null : Number(body.price)
+  const priceText = body.price === null || body.price === undefined ? '' : String(body.price).trim()
+  const price = priceText === '' ? null : Number(priceText)
 
   if (!productName) errors.push('Product name is required')
   else if (productName.length > 20) errors.push('Product name must be at most 20 characters')
 
-  if (!description) errors.push('Description is required')
-  else if (description.length > 300) errors.push('Description must be at most 300 characters')
+  if (description.length > 300) errors.push('Description must be at most 300 characters')
 
-  if (price === null || Number.isNaN(price) || price < 0) errors.push('Price must be a non-negative number')
-  else if (price !== null && Math.abs(Math.round(price * 100) - price * 100) > 1e-6) {
-    errors.push('Price must have at most 2 decimal places')
+  if (price !== null) {
+    if (Number.isNaN(price) || price < 0) errors.push('Price must be a non-negative number')
+    else if (Math.abs(Math.round(price * 100) - price * 100) > 1e-6) {
+      errors.push('Price must have at most 2 decimal places')
+    }
   }
 
   if (errors.length > 0) return { valid: false, errors }
