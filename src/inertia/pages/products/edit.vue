@@ -3,6 +3,7 @@ import { Link, router } from '@inertiajs/vue3'
 import { ref } from 'vue'
 import ProductForm from '../../components/ProductForm.vue'
 import type { ProductType } from '../../../types/product'
+import { useT } from '../../composables/useLocale'
 
 interface Props {
   product: ProductType
@@ -12,6 +13,7 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+const t = useT()
 
 // deep-clone the product so edits are not applied directly to the prop
 const product = ref<ProductType>(JSON.parse(JSON.stringify(props.product)))
@@ -31,12 +33,12 @@ function update() {
 <template>
   <section>
     <div v-if="errors?.write" class="error">{{ errors.write }}</div>
-    <h2>Edit product</h2>
+    <h2>{{ t('Edit product') }}</h2>
     <form v-on:submit.prevent="update">
       <ProductForm v-model:the-product="product" v-if="!!product"></ProductForm>
-      <button type="submit" class="btn btn-primary" v-if="!!product && product.id >= 0">Save</button>
+      <button type="submit" class="btn btn-primary" v-if="!!product && product.id >= 0">{{ t('Save') }}</button>
       {{ ' ' }}
-      <Link href="/products" class="btn btn-default">Cancel</Link>
+      <Link href="/products" class="btn btn-default">{{ t('Cancel') }}</Link>
     </form>
   </section>
 </template>

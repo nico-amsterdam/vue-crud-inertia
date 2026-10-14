@@ -3,6 +3,7 @@ import { Link, router } from '@inertiajs/vue3'
 import { computed, ref } from 'vue'
 import ProductForm from '../../components/ProductForm.vue'
 import type { ProductType } from '../../../types/product'
+import { useT } from '../../composables/useLocale'
 
 interface Props {
   products?: ProductType[]
@@ -15,6 +16,8 @@ const props = withDefaults(defineProps<Props>(), {
   products: () => [],
   errors: () => ({ write: '' }),
 })
+
+const t = useT()
 
 const submitting = ref(false)
 const product = ref({ id: null, productName: '', description: '', price: null, modifiedAt: null })
@@ -36,15 +39,16 @@ function createProduct() {
 
 <template>
   <section>
-    <div v-if="productAlreadyExists" id="errors-add-product" class="error">A product with this name already exists
+    <div v-if="productAlreadyExists" id="errors-add-product" class="error">{{
+      t('A product with this name already exists') }}
     </div>
     <div v-if="errors.write" class="error">{{ errors.write }}</div>
-    <h2>Add product</h2>
+    <h2>{{ t('Add product') }}</h2>
     <form v-on:submit.prevent="createProduct">
       <ProductForm v-model:the-product="product"></ProductForm>
-      <button type="submit" :disabled="submitting" class="btn btn-primary">Create</button>
+      <button type="submit" :disabled="submitting" class="btn btn-primary">{{ t('Create') }}</button>
       {{ ' ' }}
-      <Link href="/products" class="btn btn-default">Cancel</Link>
+      <Link href="/products" class="btn btn-default">{{ t('Cancel') }}</Link>
     </form>
   </section>
 </template>

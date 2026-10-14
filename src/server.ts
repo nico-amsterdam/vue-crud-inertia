@@ -1,6 +1,7 @@
 import { Hono, type Context } from 'hono'
 import { serveStatic } from 'hono/serve-static'
 import { raw } from 'hono/html'
+import { getCookie, setCookie } from 'hono/cookie'
 import {
   createInertia,
   createViteHtmlRenderer,
@@ -11,11 +12,13 @@ import { asc, eq } from 'drizzle-orm'
 import { getDB, tables } from './db/index.js'
 import type { ProductBaseType, ProductType } from './types/product.js'
 import manifest from './generated/manifest.js'
+import { getContentLanguage, getLang, LANG_COOKIE, setContentLanguage, STANDARD_LANGUAGE } from './i18n/lang.js'
+import { translate } from './i18n/translations.js'
 
 const isDev = process.env.NODE_ENV !== 'production'
 
 type AppEnv = {
-  Variables: InertiaVariables
+  Variables: InertiaVariables & { lang: string }
   Bindings: {
     ASSETS?: { fetch: typeof fetch }
   }
@@ -46,18 +49,50 @@ if (!isDev) {
   app.use('/assets/*', staticServe('./dist'))
 }
 
+/*
+ * Language: `?lang=xx` switches (and remembers in a cookie), otherwise the
+ * cookie is used, falling back to the Accept-Language header and 'en'.
+ */
+app.use(async (c, next) => {
+  const queryLang = c.req.query('lang')
+  const lang = getLang(c.req.header(), c.req.query(), getCookie(c, LANG_COOKIE))
+  if (queryLang !== undefined) {
+    setCookie(c, LANG_COOKIE, lang, { path: '/', maxAge: 60 * 60 * 24 * 365, sameSite: 'Lax' })
+  }
+  setContentLanguage(c, lang)
+  await next()
+})
+
+const viteHtmlRenderer = createViteHtmlRenderer({
+  dev: isDev,
+  entry: 'src/inertia/main.ts',
+  manifest: isDev ? null : manifest,
+  htmlAttrs: { class: 'retro' },
+  head: raw('<link rel="stylesheet" href="/css/bootstrap3-un.css" />'),
+})
+
 const { middleware } = createInertia({
   version: '1',
-  renderHtml: createViteHtmlRenderer({
-    dev: isDev,
-    entry: 'src/inertia/main.ts',
-    manifest: isDev ? null : manifest,
-    htmlAttrs: { class: 'retro' },
-    head: raw('<link rel="stylesheet" href="/css/bootstrap3-un.css" />'),
-  }),
+  share: (c) => ({ locale: { lang: getContentLanguage(c) } }),
+  renderHtml: async (ctx) => {
+    const html = await viteHtmlRenderer(ctx)
+    // createViteHtmlRenderer only accepts a static `lang`, so swap it for the request language.
+    const locale = ctx.page.props.locale as { lang?: string } | undefined
+    return html.replace('<html lang="en"', `<html lang="${locale?.lang ?? STANDARD_LANGUAGE}"`)
+  },
 })
 
 app.use(middleware)
+
+/** Translate an English message key for the current request language. */
+function t(c: Context, key: string, ...args: string[]): string {
+  return translate(getContentLanguage(c), key, args)
+}
+
+/** Translate the English message keys returned by validateProduct(). */
+function translateErrors(c: Context, errors: string[]): string {
+  return errors.map((error) => translate(getContentLanguage(c), error, [])).join('. ')
+}
 
 /*
  * Database-backed product store
@@ -153,11 +188,11 @@ app.post('/products', async (c) => {
   const products = await loadProducts()
 
   if (!result.valid) {
-    return render(c, 'products/new', { products, errors: { write: result.errors.join('. ') } })
+    return render(c, 'products/new', { products, errors: { write: translateErrors(c, result.errors) } })
   }
 
   if (await productNameExists(result.data.productName)) {
-    return render(c, 'products/new', { products, errors: { write: 'A product with this name already exists' } })
+    return render(c, 'products/new', { products, errors: { write: t(c, 'A product with this name already exists') } })
   }
 
   try {
@@ -169,7 +204,7 @@ app.post('/products', async (c) => {
     })
     return c.redirect('/products', 303)
   } catch {
-    return render(c, 'products/new', { products, errors: { write: 'Could not create product' } })
+    return render(c, 'products/new', { products, errors: { write: t(c, 'Could not create product') } })
   }
 })
 
@@ -197,11 +232,11 @@ app.patch('/products/:id', async (c) => {
   const body = await c.req.json<Partial<ProductBaseType>>()
   const result = validateProduct(body)
   if (!result.valid) {
-    return render(c, 'products/edit', { product: toProduct(dbProduct), errors: { write: result.errors.join('. ') } })
+    return render(c, 'products/edit', { product: toProduct(dbProduct), errors: { write: translateErrors(c, result.errors) } })
   }
 
   if (await productNameExists(result.data.productName, id)) {
-    return render(c, 'products/edit', { product: toProduct(dbProduct), errors: { write: 'A product with this name already exists' } })
+    return render(c, 'products/edit', { product: toProduct(dbProduct), errors: { write: t(c, 'A product with this name already exists') } })
   }
 
   try {
@@ -217,7 +252,7 @@ app.patch('/products/:id', async (c) => {
       .where(eq(tables.products.id, id))
     return c.redirect('/products', 303)
   } catch {
-    return render(c, 'products/edit', { product: toProduct(dbProduct), errors: { write: 'Could not update product' } })
+    return render(c, 'products/edit', { product: toProduct(dbProduct), errors: { write: t(c, 'Could not update product') } })
   }
 })
 

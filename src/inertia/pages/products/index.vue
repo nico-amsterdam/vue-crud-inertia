@@ -3,6 +3,7 @@ import { Icon } from '@iconify/vue'
 import { router, Link } from '@inertiajs/vue3'
 import { computed, onMounted, ref } from 'vue'
 import type { ProductType } from '../../../types/product'
+import { useT } from '../../composables/useLocale'
 
 interface Props {
   products: ProductType[]
@@ -15,6 +16,8 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   errors: () => ({ read: '', write: '' }),
 })
+
+const t = useT()
 
 const searchKey = ref('')
 const productList = computed(() => props.products)
@@ -43,27 +46,27 @@ onMounted(() => {
         {{ errors.read }}
       </div>
       <Link class="btn btn-default" href="/products/new">
-        <Icon icon="tabler:plus" title="Add product" class="plussign" />
-        Add product
+        <Icon icon="tabler:plus" :title="t('Add product')" class="plussign" />
+        {{ t('Add product') }}
       </Link>
-      <button type="button" class="btn refresh" title="Refresh list" @click="refresh">
+      <button type="button" class="btn refresh" :title="t('Refresh list')" @click="refresh">
         <Icon flip="horizontal" icon="tabler:refresh" />
       </button>
     </div>
     <div class="filters row">
       <div class="form-group product-search">
-        <label for="search-element">Search</label>
+        <label for="search-element">{{ t('Search') }}</label>
         <input v-model="searchKey" class="form-control" id="search-element"
-          aria-description="Filter products by name, description or price" />
+          :aria-description="t('Filter products by name, description or price')" />
       </div>
     </div>
     <table class="table">
       <thead>
         <tr>
-          <th scope="col">Name</th>
-          <th scope="col">Description</th>
-          <th scope="col" class="price">Price</th>
-          <th scope="col" class="table-actions">Actions</th>
+          <th scope="col">{{ t('Name') }}</th>
+          <th scope="col">{{ t('Description') }}</th>
+          <th scope="col" class="price">{{ t('Price') }}</th>
+          <th scope="col" class="table-actions">{{ t('Actions') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -80,16 +83,16 @@ onMounted(() => {
             {{ product.price }} €
           </td>
           <td class="table-actions">
-            <Link v-if="product.id >= 0" class="btn btn-warning btn-xs" :href="`/products/${product.id}/edit`">Edit</Link>
+            <Link v-if="product.id >= 0" class="btn btn-warning btn-xs" :href="`/products/${product.id}/edit`">{{ t('Edit') }}</Link>
             {{ ' ' }}
-            <Link v-if="product.id >= 0" class="btn btn-danger btn-xs" :href="`/products/${product.id}/delete`">Delete</Link>
+            <Link v-if="product.id >= 0" class="btn btn-danger btn-xs" :href="`/products/${product.id}/delete`">{{ t('Delete') }}</Link>
           </td>
         </tr>
       </tbody>
       <tfoot id="search-results-footer">
         <tr id="announceResults" aria-live="assertive" aria-atomic="true">
-          <td v-if="productList.length === 0" id="noResults" colspan="4">No products available</td>
-          <td v-else-if="filteredProducts.length === 0" id="noResults" colspan="4">No products match your search</td>
+          <td v-if="productList.length === 0" id="noResults" colspan="4">{{ t('No products available') }}</td>
+          <td v-else-if="filteredProducts.length === 0" id="noResults" colspan="4">{{ t('No products match your search') }}</td>
         </tr>
       </tfoot>
     </table>
