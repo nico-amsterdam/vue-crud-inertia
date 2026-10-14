@@ -3,16 +3,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "concurrently -k -n server,vite -c blue,green \"bun run dev:wrangler\" \"bun run dev:vite\"",
+    "dev": "bun run build && concurrently -k -n server,vite -c blue,green \"bun run dev:wrangler\" \"bun run dev:vite\"",
     "dev:vite": "vite",
     "dev:wrangler": "wrangler dev",
-    "preview": "bun run build && NODE_ENV=production wrangler dev --env production",
+    "preview": "bun run build && NODE_ENV=production bun run dev:wrangler",
     "build": "vite build && bun run generate:manifest",
     "generate:manifest": "bun run scripts/generate-manifest.ts",
-    "postinstall": "bun run generate:manifest",
     "update:types": "wrangler types",
     "build:client": "bun build client/src/*.ts --outdir public/javascript/ --target browser --minify --entry-naming '/[name].[ext]'",
-    "deploy:app": "bun run build && wrangler deploy --env production",
+    "deploy:app": "bun run build && wrangler deploy",
     "typecheck": "tsc --noEmit",
     "typecheck:watch": "tsc --noEmit --watch",
     "create:db": "wrangler d1 create inertia-crud",
@@ -23,7 +22,7 @@
     "test:db": "wrangler d1 execute inertia-crud --remote --command \"select * from products\";",
     "secret:github": "wrangler secret put GITHUB_CLIENT_SECRET",
     "secret:google": "wrangler secret put GOOGLE_CLIENT_SECRET",
-    "logtail": "wrangler tail vue-inertia-crud-production",
+    "logtail": "wrangler tail vue-inertia-crud",
     "rollback:app": "wrangler rollback",
     "delete:app": "wrangler delete",
     "databases": "wrangler d1 list",
@@ -39,10 +38,11 @@
     "drizzle-orm": "^0.45.4",
     "hono": "^4.13.13",
     "typedi": "^0.10.0",
-    "vue": "^3.5.43"
+    "vue": "^3.5.44"
   },
   "devDependencies": {
-    "@types/bun": "^1.4.2",
+    "better-sqlite3": "^12.11.1",
+    "@types/bun": "^1.4.3",
     "@vitejs/plugin-vue": "^5.2.4",
     "concurrently": "^9.2.5",
     "cross-env": "^10.1.0",
@@ -50,6 +50,6 @@
     "drizzle-kit": "^0.31.11",
     "typescript": "^5.9.3",
     "vite": "^5.4.21",
-    "wrangler": "^4.149.0"
+    "wrangler": "^4.151.0"
   }
 }
