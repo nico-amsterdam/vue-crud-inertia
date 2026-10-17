@@ -34,7 +34,7 @@
   "dependencies": {
     "@iconify/vue": "^5.0.3",
     "@inertiajs/vue3": "^3.9.1",
-    "@sneakylenny/inertia-hono": "^0.3.5",
+    "@sneakylenny/inertia-hono": "^0.4.1",
     "drizzle-orm": "^0.45.4",
     "hono": "^4.13.13",
     "typedi": "^0.10.0",

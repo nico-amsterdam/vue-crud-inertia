@@ -1,6 +1,6 @@
 import { Hono, type Context } from 'hono'
-import { render } from '@sneakylenny/inertia-hono'
-import { and, asc, eq, isNull } from 'drizzle-orm'
+import { offsetPaginate, render, scroll } from '@sneakylenny/inertia-hono'
+import { and, asc, count, eq, isNull, sql } from 'drizzle-orm'
 import { getDB, tables } from '../db/index'
 import type { ProductBaseType, ProductErrorsType, ProductType } from '../types/product'
 import type { AppEnv } from '../types/env'
@@ -39,12 +39,60 @@ function toProduct(dbProduct: DBProduct): ProductType {
   }
 }
 
-async function loadProducts(): Promise<ProductType[]> {
+/** Products per page. Above this list size the list is paginated with infinite scroll
+ *  and filtering moves to the server (`/products/findbyname`). */
+const PER_PAGE = 100
+
+/** The 1-based page number requested by the client. */
+function readPage(c: Context): number {
+  const page = Number(c.req.query('page') ?? 1)
+  return Number.isFinite(page) && page >= 1 ? Math.floor(page) : 1
+}
+
+/** A "load more" request from `<InfiniteScroll>` carries the merge-intent header. */
+function isLoadMoreRequest(c: Context): boolean {
+  return c.req.header('x-inertia-infinite-scroll-merge-intent') !== undefined
+}
+
+/** SQL LIKE pattern matching the starting letters of `q` (escaped, prefix only). */
+function namePrefixPattern(q: string): string {
+  if (q === '') return '%'
+  return `${q.replace(/[\\%_]/g, (m) => `\\${m}`)}%`
+}
+
+async function countProducts(namePattern?: string): Promise<{ total: number; matched: number }> {
+  const row = await getDB().get<{ total: number; matched: number | null }>(
+    namePattern === undefined
+      ? sql`select count(*) as total, count(*) as matched from ${tables.products}`
+      : sql`
+          select count(*) as total,
+                 sum(case when ${tables.products.name} like ${namePattern} escape '\\' then 1 else 0 end) as matched
+          from ${tables.products}
+        `,
+  )
+  return { total: row?.total ?? 0, matched: row?.matched ?? 0 }
+}
+
+async function loadProductsPage(page: number, namePattern?: string): Promise<ProductType[]> {
   const dbProducts = await getDB()
     .select()
     .from(tables.products)
+    .where(namePattern === undefined
+      ? undefined
+      : sql`${tables.products.name} like ${namePattern} escape '\\'`)
     .orderBy(asc(tables.products.name))
+    .limit(PER_PAGE)
+    .offset((page - 1) * PER_PAGE)
   return dbProducts.map(toProduct)
+}
+
+/** Wrap a page of products for `<InfiniteScroll>`: appended on "load more",
+ *  and reset whenever the list is loaded outside of a "load more" request
+ *  (initial load or filter change). */
+function pagedProducts(c: Context, products: ProductType[], page: number, total: number) {
+  return scroll(products, offsetPaginate({ page, perPage: PER_PAGE, total }))
+    .match('id')
+    .resetWhen(!isLoadMoreRequest(c))
 }
 
 async function productNameExists(productName: string, excludeId?: number): Promise<boolean> {
@@ -99,11 +147,29 @@ function validateProduct(body: Partial<ProductBaseType>): { valid: true; data: P
 
 const app = new Hono<AppEnv>()
   .get('/', async (c) => {
-    const products = await loadProducts()
-    return render(c, 'products/index', { products })
+    const page = readPage(c)
+    const { total } = await countProducts()
+    const products = await loadProductsPage(page)
+    return render(c, 'products/index', {
+      products: pagedProducts(c, products, page, total),
+      serverFilter: total > PER_PAGE,
+      q: '',
+    })
   })
   .get('/new', (c) => {
     return render(c, 'products/new', {})
+  })
+  .get('/findbyname', async (c) => {
+    const q = c.req.query('q') ?? ''
+    const page = readPage(c)
+    const pattern = namePrefixPattern(q)
+    const { total, matched } = await countProducts(pattern)
+    const products = await loadProductsPage(page, pattern)
+    return render(c, 'products/index', {
+      products: pagedProducts(c, products, page, matched),
+      serverFilter: total > PER_PAGE,
+      q,
+    })
   })
   .post('/', async (c) => {
     const body = await c.req.json<Partial<ProductBaseType>>()

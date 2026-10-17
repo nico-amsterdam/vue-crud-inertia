@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import { Icon } from '@iconify/vue'
-import { router, Link } from '@inertiajs/vue3'
-import { computed, onMounted, ref } from 'vue'
+import { InfiniteScroll, router, Link } from '@inertiajs/vue3'
+import { computed, onMounted, ref, watch } from 'vue'
 import type { ProductType } from '../../../types/product'
 import { useT } from '../../composables/useLocale'
 
 interface Props {
   products: ProductType[]
+  /** More than 100 products: the server filters (name prefix) and paginates. */
+  serverFilter?: boolean
+  /** The name-prefix filter applied by the server (`/products/findbyname`). */
+  q?: string
   errors?: {
     read?: string
     write?: string
@@ -14,18 +18,38 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
+  serverFilter: false,
+  q: '',
   errors: () => ({ read: '', write: '' }),
 })
 
 const t = useT()
 
-const searchKey = ref('')
+const searchKey = ref(props.q)
 const productList = computed(() => props.products)
 const filteredProducts = computed(() => {
+  if (props.serverFilter) {
+    // The server already filtered on the starting letters of the name.
+    return productList.value
+  }
   return productList.value.filter(product =>
     product.productName.toLowerCase().indexOf(searchKey.value.toLowerCase()) !== -1
     || product.description.toLowerCase().indexOf(searchKey.value.toLowerCase()) !== -1
     || (product.price && product.price.toString().indexOf(searchKey.value) !== -1))
+})
+
+let searchTimer: ReturnType<typeof setTimeout> | undefined
+
+watch(searchKey, (value) => {
+  if (!props.serverFilter) return
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => {
+    if (value === '') {
+      router.get('/products', {}, { replace: true })
+    } else {
+      router.get('/products/findbyname', { q: value }, { replace: true })
+    }
+  }, 300)
 })
 
 function refresh() {
@@ -52,45 +76,52 @@ onMounted(() => {
       <div class="form-group product-search">
         <label for="search-element">{{ t('Search') }}</label>
         <input v-model="searchKey" class="form-control" id="search-element"
-          :aria-description="t('Filter products by name, description or price')" />
+          :aria-description="serverFilter
+            ? t('Filter products by the starting letters of the product name')
+            : t('Filter products by name, description or price')" />
       </div>
     </div>
-    <table class="table">
-      <thead>
-        <tr>
-          <th scope="col">{{ t('Name') }}</th>
-          <th scope="col">{{ t('Description') }}</th>
-          <th scope="col" class="price">{{ t('Price') }}</th>
-          <th scope="col" class="table-actions">{{ t('Actions') }}</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="product in filteredProducts" :key="product.id">
-          <td>
-            <Link v-if="product.id >= 0" :href="`/products/${product.id}/edit`">{{
-              product.productName }}</Link>
-            <span v-if="product.id < 0">{{ product.productName }}</span>
-          </td>
-          <td>
-            {{ product.description }}
-          </td>
-          <td class="price">
-            {{ product.price }} €
-          </td>
-          <td class="table-actions">
-            <Link v-if="product.id >= 0" class="btn btn-warning btn-xs" :href="`/products/${product.id}/edit`">{{ t('Edit') }}</Link>
-            {{ ' ' }}
-            <Link v-if="product.id >= 0" class="btn btn-danger btn-xs" :href="`/products/${product.id}/delete`">{{ t('Delete') }}</Link>
-          </td>
-        </tr>
-      </tbody>
-      <tfoot id="search-results-footer">
-        <tr id="announceResults" aria-live="assertive" aria-atomic="true">
-          <td v-if="productList.length === 0" id="noResults" colspan="4">{{ t('No products available') }}</td>
-          <td v-else-if="filteredProducts.length === 0" id="noResults" colspan="4">{{ t('No products match your search') }}</td>
-        </tr>
-      </tfoot>
-    </table>
+    <InfiniteScroll data="products" :buffer="200" as="div" preserve-url>
+      <table class="table">
+        <thead>
+          <tr>
+            <th scope="col">{{ t('Name') }}</th>
+            <th scope="col">{{ t('Description') }}</th>
+            <th scope="col" class="price">{{ t('Price') }}</th>
+            <th scope="col" class="table-actions">{{ t('Actions') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="product in filteredProducts" :key="product.id">
+            <td>
+              <Link v-if="product.id >= 0" :href="`/products/${product.id}/edit`">{{
+                product.productName }}</Link>
+              <span v-if="product.id < 0">{{ product.productName }}</span>
+            </td>
+            <td>
+              {{ product.description }}
+            </td>
+            <td class="price">
+              {{ product.price }} €
+            </td>
+            <td class="table-actions">
+              <Link v-if="product.id >= 0" class="btn btn-warning btn-xs" :href="`/products/${product.id}/edit`">{{ t('Edit') }}</Link>
+              {{ ' ' }}
+              <Link v-if="product.id >= 0" class="btn btn-danger btn-xs" :href="`/products/${product.id}/delete`">{{ t('Delete') }}</Link>
+            </td>
+          </tr>
+        </tbody>
+        <tfoot id="search-results-footer">
+          <tr id="announceResults" aria-live="assertive" aria-atomic="true">
+            <td v-if="productList.length === 0 && !(serverFilter && searchKey)" id="noResults" colspan="4">{{ t('No products available') }}</td>
+            <td v-else-if="filteredProducts.length === 0" id="noResults" colspan="4">{{ t('No products match your search') }}</td>
+          </tr>
+        </tfoot>
+      </table>
+      <template #loading>
+        <div class="infinite-scroll-loading" role="status" :aria-label="t('Loading')"></div>
+      </template>
+    </InfiniteScroll>
   </main>
 </template>
 
@@ -188,5 +219,21 @@ onMounted(() => {
 .product-list .table .price {
   width: 102px;
   text-align: right
+}
+
+.infinite-scroll-loading {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0
+}
+
+.infinite-scroll-loading::after {
+  content: "";
+  width: 20px;
+  height: 20px;
+  border: 3px solid #ccc;
+  border-top-color: #337ab7;
+  border-radius: 50%;
+  animation: spin 800ms linear infinite
 }
 </style>
