@@ -40,11 +40,6 @@ onMounted(() => {
 <template>
   <main id="main" class="product-list">
     <div class="form-actions">
-      <div class="error" v-if="errors.write || errors.read">
-        {{ errors.write }}
-        <p v-if="errors.read && errors.write" />
-        {{ errors.read }}
-      </div>
       <Link class="btn btn-default" href="/products/new">
         <Icon icon="tabler:plus" :title="t('Add product')" class="plussign" />
         {{ t('Add product') }}

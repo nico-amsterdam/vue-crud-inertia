@@ -28,8 +28,8 @@ function remove() {
 
 <template>
   <section>
-    <div v-if="errors?.write" class="error">{{ errors.write }}</div>
     <h2>{{ t('Delete {0}', product?.productName ?? '???') }}</h2>
+    <div v-if="errors?.write" class="error">{{ errors.write }}</div>
     <form v-on:submit.prevent="remove">
       <p>{{ t('Are you sure you want to delete this product?') }}</p>
       <button type="submit" class="btn btn-danger" v-if="!!product && product.id >= 0" :disabled="submitting">{{

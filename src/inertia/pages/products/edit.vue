@@ -30,8 +30,8 @@ function update() {
 
 <template>
   <section>
-    <div v-if="errors?.write" class="error">{{ errors.write }}</div>
     <h2>{{ t('Edit product') }}</h2>
+    <div v-if="errors?.write" class="error">{{ errors.write }}</div>
     <form v-on:submit.prevent="update">
       <ProductForm v-model:the-product="product" :errors="errors" v-if="!!product"></ProductForm>
       <button type="submit" class="btn btn-primary" v-if="!!product && product.id >= 0">{{ t('Save') }}</button>

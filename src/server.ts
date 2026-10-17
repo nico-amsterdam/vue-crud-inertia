@@ -8,7 +8,7 @@ import {
   render,
   type InertiaVariables,
 } from '@sneakylenny/inertia-hono'
-import { asc, eq } from 'drizzle-orm'
+import { and, asc, eq, isNull } from 'drizzle-orm'
 import { getDB, tables } from './db/index.js'
 import type { ProductBaseType, ProductErrorsType, ProductType } from './types/product.js'
 import manifest from './generated/manifest.js'
@@ -224,25 +224,30 @@ app.get('/products/:id/edit', async (c) => {
 
 app.patch('/products/:id', async (c) => {
   const id = Number(c.req.param('id'))
-  const dbProduct = await getDB()
-    .select()
-    .from(tables.products)
-    .where(eq(tables.products.id, id))
-    .get()
-  if (!dbProduct) return c.notFound()
-
   const body = await c.req.json<Partial<ProductBaseType>>()
+  const staleProduct: ProductType = {
+    id,
+    productName: typeof body.productName === 'string' ? body.productName : '',
+    description: typeof body.description === 'string' ? body.description : '',
+    price: typeof body.price === 'number' ? body.price : null,
+    modifiedAt: body.modifiedAt ?? null,
+  }
+
   const result = validateProduct(body)
   if (!result.valid) {
-    return render(c, 'products/edit', { product: toProduct(dbProduct), errors: translateFieldErrors(c, result.errors) })
+    return render(c, 'products/edit', { product: staleProduct, errors: translateFieldErrors(c, result.errors) })
   }
 
   if (await productNameExists(result.data.productName, id)) {
-    return render(c, 'products/edit', { product: toProduct(dbProduct), errors: { productName: t(c, 'A product with this name already exists') } })
+    return render(c, 'products/edit', { product: staleProduct, errors: { productName: t(c, 'A product with this name already exists') } })
   }
 
+  // Optimistic concurrency: only update if the product was not changed or removed since it was opened.
+  const modifiedAt = body.modifiedAt
+  const verifyModifiedAt = !modifiedAt ? null : new Date(modifiedAt)
+
   try {
-    await getDB()
+    const updatedProductIds: { updatedId: number }[] = await getDB()
       .update(tables.products)
       .set({
         name: result.data.productName,
@@ -251,10 +256,22 @@ app.patch('/products/:id', async (c) => {
         modifiedBy: DEFAULT_USER,
         modifiedAt: new Date(),
       })
-      .where(eq(tables.products.id, id))
+      .where(and(
+        eq(tables.products.id, id),
+        verifyModifiedAt === null
+          ? isNull(tables.products.modifiedAt)
+          : eq(tables.products.modifiedAt, verifyModifiedAt),
+      ))
+      .returning({ updatedId: tables.products.id })
+
+    if (updatedProductIds.length === 0) {
+      const message = t(c, "'{0}' is changed or removed by another user. Reopen it from the list.", result.data.productName)
+      return render(c, 'products/edit', { product: staleProduct, errors: { write: message } })
+    }
+
     return c.redirect('/products', 303)
   } catch {
-    return render(c, 'products/edit', { product: toProduct(dbProduct), errors: { write: t(c, 'Could not update product') } })
+    return render(c, 'products/edit', { product: staleProduct, errors: { write: t(c, 'Could not update product') } })
   }
 })
 
@@ -272,13 +289,7 @@ app.get('/products/:id/delete', async (c) => {
 
 app.delete('/products/:id', async (c) => {
   const id = Number(c.req.param('id'))
-  const dbProduct = await getDB()
-    .select()
-    .from(tables.products)
-    .where(eq(tables.products.id, id))
-    .get()
-  if (!dbProduct) return c.notFound()
-
+  // Deleting a product that is already gone is treated as success.
   await getDB().delete(tables.products).where(eq(tables.products.id, id))
   return c.redirect('/products', 303)
 })

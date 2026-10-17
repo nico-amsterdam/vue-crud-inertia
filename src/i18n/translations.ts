@@ -72,6 +72,8 @@ const translations: Translations = {
     'Price must have at most 2 decimal places': 'Price must have at most 2 decimal places',
     'Could not create product': 'Could not create product',
     'Could not update product': 'Could not update product',
+    "'{0}' is changed or removed by another user. Reopen it from the list.":
+      "'{0}' is changed or removed by another user. Reopen it from the list.",
   },
   es: {
     'Skip to main content': 'Saltar al contenido principal',
@@ -103,6 +105,8 @@ const translations: Translations = {
     'Price must have at most 2 decimal places': 'El precio debe tener como máximo 2 decimales',
     'Could not create product': 'No se pudo crear el producto',
     'Could not update product': 'No se pudo actualizar el producto',
+    "'{0}' is changed or removed by another user. Reopen it from the list.":
+      "'{0}' fue cambiado o eliminado por otro usuario. Vuelve a abrirlo desde la lista.",
   },
   fr: {
     'Skip to main content': 'Passer au contenu principal',
@@ -134,6 +138,8 @@ const translations: Translations = {
     'Price must have at most 2 decimal places': 'Le prix doit comporter au plus 2 décimales',
     'Could not create product': 'Impossible de créer le produit',
     'Could not update product': 'Impossible de mettre à jour le produit',
+    "'{0}' is changed or removed by another user. Reopen it from the list.":
+      "'{0}' a été modifié ou supprimé par un autre utilisateur. Rouvrez-le depuis la liste.",
   },
   de: {
     'Skip to main content': 'Zum Hauptinhalt springen',
@@ -165,5 +171,7 @@ const translations: Translations = {
     'Price must have at most 2 decimal places': 'Preis darf höchstens 2 Nachkommastellen haben',
     'Could not create product': 'Produkt konnte nicht erstellt werden',
     'Could not update product': 'Produkt konnte nicht aktualisiert werden',
+    "'{0}' is changed or removed by another user. Reopen it from the list.":
+      "'{0}' wurde von einem anderen Benutzer geändert oder entfernt. Öffnen Sie es erneut aus der Liste.",
   },
 }
