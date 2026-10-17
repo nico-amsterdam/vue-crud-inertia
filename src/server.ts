@@ -177,22 +177,20 @@ app.get('/products', async (c) => {
   return render(c, 'products/index', { products })
 })
 
-app.get('/products/new', async (c) => {
-  const products = await loadProducts()
-  return render(c, 'products/new', { products })
+app.get('/products/new', (c) => {
+  return render(c, 'products/new', {})
 })
 
 app.post('/products', async (c) => {
   const body = await c.req.json<Partial<ProductBaseType>>()
   const result = validateProduct(body)
-  const products = await loadProducts()
 
   if (!result.valid) {
-    return render(c, 'products/new', { products, errors: { write: translateErrors(c, result.errors) } })
+    return render(c, 'products/new', { errors: { write: translateErrors(c, result.errors) } })
   }
 
   if (await productNameExists(result.data.productName)) {
-    return render(c, 'products/new', { products, errors: { write: t(c, 'A product with this name already exists') } })
+    return render(c, 'products/new', { errors: { write: t(c, 'A product with this name already exists') } })
   }
 
   try {
@@ -204,7 +202,7 @@ app.post('/products', async (c) => {
     })
     return c.redirect('/products', 303)
   } catch {
-    return render(c, 'products/new', { products, errors: { write: t(c, 'Could not create product') } })
+    return render(c, 'products/new', { errors: { write: t(c, 'Could not create product') } })
   }
 })
 
