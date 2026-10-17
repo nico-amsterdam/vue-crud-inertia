@@ -225,7 +225,6 @@
 
     .error {
         color: var(--text-error-color);
-        margin: -25px 120px 10px 0px
     }
 
     .row {

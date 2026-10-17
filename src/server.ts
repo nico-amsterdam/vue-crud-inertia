@@ -10,7 +10,7 @@ import {
 } from '@sneakylenny/inertia-hono'
 import { asc, eq } from 'drizzle-orm'
 import { getDB, tables } from './db/index.js'
-import type { ProductBaseType, ProductType } from './types/product.js'
+import type { ProductBaseType, ProductErrorsType, ProductType } from './types/product.js'
 import manifest from './generated/manifest.js'
 import { getContentLanguage, getLang, LANG_COOKIE, setContentLanguage, STANDARD_LANGUAGE } from './i18n/lang.js'
 import { translate } from './i18n/translations.js'
@@ -89,9 +89,13 @@ function t(c: Context, key: string, ...args: string[]): string {
   return translate(getContentLanguage(c), key, args)
 }
 
-/** Translate the English message keys returned by validateProduct(). */
-function translateErrors(c: Context, errors: string[]): string {
-  return errors.map((error) => translate(getContentLanguage(c), error, [])).join('. ')
+/** Translate the English message keys in per-field errors returned by validateProduct(). */
+function translateFieldErrors(c: Context, errors: ProductErrorsType): ProductErrorsType {
+  const translated: ProductErrorsType = {}
+  if (errors.productName) translated.productName = t(c, errors.productName)
+  if (errors.description) translated.description = t(c, errors.description)
+  if (errors.price) translated.price = t(c, errors.price)
+  return translated
 }
 
 /*
@@ -134,26 +138,26 @@ function priceToCents(price: number | null): number | null {
   return price === null ? null : Math.round(price * 100)
 }
 
-function validateProduct(body: Partial<ProductBaseType>): { valid: true; data: ProductBaseType } | { valid: false; errors: string[] } {
-  const errors: string[] = []
+function validateProduct(body: Partial<ProductBaseType>): { valid: true; data: ProductBaseType } | { valid: false; errors: ProductErrorsType } {
+  const errors: ProductErrorsType = {}
   const productName = typeof body.productName === 'string' ? body.productName.trim() : ''
   const description = typeof body.description === 'string' ? body.description.trim() : ''
   const priceText = body.price === null || body.price === undefined ? '' : String(body.price).trim()
   const price = priceText === '' ? null : Number(priceText)
 
-  if (!productName) errors.push('Product name is required')
-  else if (productName.length > 20) errors.push('Product name must be at most 20 characters')
+  if (!productName) errors.productName = 'Product name is required'
+  else if (productName.length > 20) errors.productName = 'Product name must be at most 20 characters'
 
-  if (description.length > 300) errors.push('Description must be at most 300 characters')
+  if (description.length > 300) errors.description = 'Description must be at most 300 characters'
 
   if (price !== null) {
-    if (Number.isNaN(price) || price < 0) errors.push('Price must be a non-negative number')
+    if (Number.isNaN(price) || price < 0) errors.price = 'Price must be a non-negative number'
     else if (Math.abs(Math.round(price * 100) - price * 100) > 1e-6) {
-      errors.push('Price must have at most 2 decimal places')
+      errors.price = 'Price must have at most 2 decimal places'
     }
   }
 
-  if (errors.length > 0) return { valid: false, errors }
+  if (errors.productName || errors.description || errors.price) return { valid: false, errors }
 
   return {
     valid: true,
@@ -186,11 +190,11 @@ app.post('/products', async (c) => {
   const result = validateProduct(body)
 
   if (!result.valid) {
-    return render(c, 'products/new', { errors: { write: translateErrors(c, result.errors) } })
+    return render(c, 'products/new', { errors: translateFieldErrors(c, result.errors) })
   }
 
   if (await productNameExists(result.data.productName)) {
-    return render(c, 'products/new', { errors: { write: t(c, 'A product with this name already exists') } })
+    return render(c, 'products/new', { errors: { productName: t(c, 'A product with this name already exists') } })
   }
 
   try {
@@ -230,11 +234,11 @@ app.patch('/products/:id', async (c) => {
   const body = await c.req.json<Partial<ProductBaseType>>()
   const result = validateProduct(body)
   if (!result.valid) {
-    return render(c, 'products/edit', { product: toProduct(dbProduct), errors: { write: translateErrors(c, result.errors) } })
+    return render(c, 'products/edit', { product: toProduct(dbProduct), errors: translateFieldErrors(c, result.errors) })
   }
 
   if (await productNameExists(result.data.productName, id)) {
-    return render(c, 'products/edit', { product: toProduct(dbProduct), errors: { write: t(c, 'A product with this name already exists') } })
+    return render(c, 'products/edit', { product: toProduct(dbProduct), errors: { productName: t(c, 'A product with this name already exists') } })
   }
 
   try {

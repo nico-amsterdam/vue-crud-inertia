@@ -7,3 +7,10 @@ export type ProductBaseType = {
 
 export type ProductType = { id: number } & ProductBaseType
 export type AddProductType = { id: number | null } & ProductBaseType
+
+export type ProductErrorsType = {
+  write?: string
+  productName?: string
+  description?: string
+  price?: string
+}

@@ -2,12 +2,11 @@
 import { Link, router } from '@inertiajs/vue3'
 import { ref } from 'vue'
 import ProductForm from '../../components/ProductForm.vue'
+import type { ProductErrorsType } from '../../../types/product'
 import { useT } from '../../composables/useLocale'
 
 interface Props {
-  errors?: {
-    write?: string
-  }
+  errors?: ProductErrorsType
 }
 
 withDefaults(defineProps<Props>(), {
@@ -34,7 +33,7 @@ function createProduct() {
     <div v-if="errors.write" class="error">{{ errors.write }}</div>
     <h2>{{ t('Add product') }}</h2>
     <form v-on:submit.prevent="createProduct">
-      <ProductForm v-model:the-product="product"></ProductForm>
+      <ProductForm v-model:the-product="product" :errors="errors"></ProductForm>
       <button type="submit" :disabled="submitting" class="btn btn-primary">{{ t('Create') }}</button>
       {{ ' ' }}
       <Link href="/products" class="btn btn-default">{{ t('Cancel') }}</Link>

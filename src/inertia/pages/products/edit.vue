@@ -2,14 +2,12 @@
 import { Link, router } from '@inertiajs/vue3'
 import { ref } from 'vue'
 import ProductForm from '../../components/ProductForm.vue'
-import type { ProductType } from '../../../types/product'
+import type { ProductErrorsType, ProductType } from '../../../types/product'
 import { useT } from '../../composables/useLocale'
 
 interface Props {
   product: ProductType
-  errors?: {
-    write?: string
-  }
+  errors?: ProductErrorsType
 }
 
 const props = defineProps<Props>()
@@ -35,7 +33,7 @@ function update() {
     <div v-if="errors?.write" class="error">{{ errors.write }}</div>
     <h2>{{ t('Edit product') }}</h2>
     <form v-on:submit.prevent="update">
-      <ProductForm v-model:the-product="product" v-if="!!product"></ProductForm>
+      <ProductForm v-model:the-product="product" :errors="errors" v-if="!!product"></ProductForm>
       <button type="submit" class="btn btn-primary" v-if="!!product && product.id >= 0">{{ t('Save') }}</button>
       {{ ' ' }}
       <Link href="/products" class="btn btn-default">{{ t('Cancel') }}</Link>
