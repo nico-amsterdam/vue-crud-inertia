@@ -5,26 +5,15 @@ import { getCookie, setCookie } from 'hono/cookie'
 import {
   createInertia,
   createViteHtmlRenderer,
-  render,
-  type InertiaVariables,
 } from '@sneakylenny/inertia-hono'
-import { and, asc, eq, isNull } from 'drizzle-orm'
-import { getDB, tables } from './db/index.js'
-import type { ProductBaseType, ProductErrorsType, ProductType } from './types/product.js'
-import manifest from './generated/manifest.js'
-import { getContentLanguage, getLang, LANG_COOKIE, setContentLanguage, STANDARD_LANGUAGE } from './i18n/lang.js'
-import { translate } from './i18n/translations.js'
+import manifest from './generated/manifest'
+import type { AppEnv } from './types/env'
+import { getContentLanguage, getLang, LANG_COOKIE, setContentLanguage, STANDARD_LANGUAGE } from './i18n/lang'
+import products from './routes/products'
 
 const isDev = process.env.NODE_ENV !== 'production'
 
-type AppEnv = {
-  Variables: InertiaVariables & { lang: string }
-  Bindings: {
-    ASSETS?: { fetch: typeof fetch }
-  }
-}
-
-export const app = new Hono<AppEnv>()
+const base = new Hono<AppEnv>()
 
 function staticServe(root: string) {
   return serveStatic({
@@ -42,18 +31,18 @@ function staticServe(root: string) {
   })
 }
 
-app.use('/css/*', staticServe('./public'))
-app.use('/manifest.webmanifest', staticServe('./public'))
+base.use('/css/*', staticServe('./public'))
+base.use('/manifest.webmanifest', staticServe('./public'))
 
 if (!isDev) {
-  app.use('/assets/*', staticServe('./dist'))
+  base.use('/assets/*', staticServe('./dist'))
 }
 
 /*
  * Language: `?lang=xx` switches (and remembers in a cookie), otherwise the
  * cookie is used, falling back to the Accept-Language header and 'en'.
  */
-app.use(async (c, next) => {
+base.use(async (c, next) => {
   const queryLang = c.req.query('lang')
   const lang = getLang(c.req.header(), c.req.query(), getCookie(c, LANG_COOKIE))
   if (queryLang !== undefined) {
@@ -82,214 +71,15 @@ const { middleware } = createInertia({
   },
 })
 
-app.use(middleware)
-
-/** Translate an English message key for the current request language. */
-function t(c: Context, key: string, ...args: string[]): string {
-  return translate(getContentLanguage(c), key, args)
-}
-
-/** Translate the English message keys in per-field errors returned by validateProduct(). */
-function translateFieldErrors(c: Context, errors: ProductErrorsType): ProductErrorsType {
-  const translated: ProductErrorsType = {}
-  if (errors.productName) translated.productName = t(c, errors.productName)
-  if (errors.description) translated.description = t(c, errors.description)
-  if (errors.price) translated.price = t(c, errors.price)
-  return translated
-}
+base.use(middleware)
 
 /*
- * Database-backed product store
+ * Routes are mounted with chaining so their types are part of the app,
+ * which allows using the Hono RPC client (`hc<AppType>()`).
+ * See https://hono.dev/docs/guides/best-practices#building-a-larger-application
  */
+export const app = base
+  .get('/', (c) => c.redirect('/products'))
+  .route('/products', products)
 
-type DBProduct = typeof tables.products.$inferSelect
-
-const DEFAULT_USER = 'system'
-
-function toProduct(dbProduct: DBProduct): ProductType {
-  return {
-    id: dbProduct.id,
-    productName: dbProduct.name,
-    description: dbProduct.description,
-    price: dbProduct.price === null ? null : dbProduct.price / 100,
-    modifiedAt: dbProduct.modifiedAt ? new Date(dbProduct.modifiedAt).toISOString() : null,
-  }
-}
-
-async function loadProducts(): Promise<ProductType[]> {
-  const dbProducts = await getDB()
-    .select()
-    .from(tables.products)
-    .orderBy(asc(tables.products.name))
-  return dbProducts.map(toProduct)
-}
-
-async function productNameExists(productName: string, excludeId?: number): Promise<boolean> {
-  const existing = await getDB()
-    .select()
-    .from(tables.products)
-    .where(eq(tables.products.name, productName))
-    .get()
-  if (!existing) return false
-  return excludeId === undefined || existing.id !== excludeId
-}
-
-function priceToCents(price: number | null): number | null {
-  return price === null ? null : Math.round(price * 100)
-}
-
-function validateProduct(body: Partial<ProductBaseType>): { valid: true; data: ProductBaseType } | { valid: false; errors: ProductErrorsType } {
-  const errors: ProductErrorsType = {}
-  const productName = typeof body.productName === 'string' ? body.productName.trim() : ''
-  const description = typeof body.description === 'string' ? body.description.trim() : ''
-  const priceText = body.price === null || body.price === undefined ? '' : String(body.price).trim()
-  const price = priceText === '' ? null : Number(priceText)
-
-  if (!productName) errors.productName = 'Product name is required'
-  else if (productName.length > 20) errors.productName = 'Product name must be at most 20 characters'
-
-  if (description.length > 300) errors.description = 'Description must be at most 300 characters'
-
-  if (price !== null) {
-    if (Number.isNaN(price) || price < 0) errors.price = 'Price must be a non-negative number'
-    else if (Math.abs(Math.round(price * 100) - price * 100) > 1e-6) {
-      errors.price = 'Price must have at most 2 decimal places'
-    }
-  }
-
-  if (errors.productName || errors.description || errors.price) return { valid: false, errors }
-
-  return {
-    valid: true,
-    data: {
-      productName,
-      description,
-      price,
-      modifiedAt: new Date().toISOString(),
-    },
-  }
-}
-
-/*
- * Routes
- */
-
-app.get('/', c => c.redirect('/products'))
-
-app.get('/products', async (c) => {
-  const products = await loadProducts()
-  return render(c, 'products/index', { products })
-})
-
-app.get('/products/new', (c) => {
-  return render(c, 'products/new', {})
-})
-
-app.post('/products', async (c) => {
-  const body = await c.req.json<Partial<ProductBaseType>>()
-  const result = validateProduct(body)
-
-  if (!result.valid) {
-    return render(c, 'products/new', { errors: translateFieldErrors(c, result.errors) })
-  }
-
-  if (await productNameExists(result.data.productName)) {
-    return render(c, 'products/new', { errors: { productName: t(c, 'A product with this name already exists') } })
-  }
-
-  try {
-    await getDB().insert(tables.products).values({
-      name: result.data.productName,
-      description: result.data.description,
-      price: priceToCents(result.data.price),
-      createdBy: DEFAULT_USER,
-    })
-    return c.redirect('/products', 303)
-  } catch {
-    return render(c, 'products/new', { errors: { write: t(c, 'Could not create product') } })
-  }
-})
-
-app.get('/products/:id/edit', async (c) => {
-  const id = Number(c.req.param('id'))
-  const dbProduct = await getDB()
-    .select()
-    .from(tables.products)
-    .where(eq(tables.products.id, id))
-    .get()
-  if (!dbProduct) return c.notFound()
-  const product = toProduct(dbProduct)
-  return render(c, 'products/edit', { product })
-})
-
-app.patch('/products/:id', async (c) => {
-  const id = Number(c.req.param('id'))
-  const body = await c.req.json<Partial<ProductBaseType>>()
-  const staleProduct: ProductType = {
-    id,
-    productName: typeof body.productName === 'string' ? body.productName : '',
-    description: typeof body.description === 'string' ? body.description : '',
-    price: typeof body.price === 'number' ? body.price : null,
-    modifiedAt: body.modifiedAt ?? null,
-  }
-
-  const result = validateProduct(body)
-  if (!result.valid) {
-    return render(c, 'products/edit', { product: staleProduct, errors: translateFieldErrors(c, result.errors) })
-  }
-
-  if (await productNameExists(result.data.productName, id)) {
-    return render(c, 'products/edit', { product: staleProduct, errors: { productName: t(c, 'A product with this name already exists') } })
-  }
-
-  // Optimistic concurrency: only update if the product was not changed or removed since it was opened.
-  const modifiedAt = body.modifiedAt
-  const verifyModifiedAt = !modifiedAt ? null : new Date(modifiedAt)
-
-  try {
-    const updatedProductIds: { updatedId: number }[] = await getDB()
-      .update(tables.products)
-      .set({
-        name: result.data.productName,
-        description: result.data.description,
-        price: priceToCents(result.data.price),
-        modifiedBy: DEFAULT_USER,
-        modifiedAt: new Date(),
-      })
-      .where(and(
-        eq(tables.products.id, id),
-        verifyModifiedAt === null
-          ? isNull(tables.products.modifiedAt)
-          : eq(tables.products.modifiedAt, verifyModifiedAt),
-      ))
-      .returning({ updatedId: tables.products.id })
-
-    if (updatedProductIds.length === 0) {
-      const message = t(c, "'{0}' is changed or removed by another user. Reopen it from the list.", result.data.productName)
-      return render(c, 'products/edit', { product: staleProduct, errors: { write: message } })
-    }
-
-    return c.redirect('/products', 303)
-  } catch {
-    return render(c, 'products/edit', { product: staleProduct, errors: { write: t(c, 'Could not update product') } })
-  }
-})
-
-app.get('/products/:id/delete', async (c) => {
-  const id = Number(c.req.param('id'))
-  const dbProduct = await getDB()
-    .select()
-    .from(tables.products)
-    .where(eq(tables.products.id, id))
-    .get()
-  if (!dbProduct) return c.notFound()
-  const product = toProduct(dbProduct)
-  return render(c, 'products/delete', { product })
-})
-
-app.delete('/products/:id', async (c) => {
-  const id = Number(c.req.param('id'))
-  // Deleting a product that is already gone is treated as success.
-  await getDB().delete(tables.products).where(eq(tables.products.id, id))
-  return c.redirect('/products', 303)
-})
+export type AppType = typeof app

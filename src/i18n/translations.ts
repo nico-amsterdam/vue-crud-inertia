@@ -1,4 +1,4 @@
-import { STANDARD_LANGUAGE } from './lang.js'
+import { STANDARD_LANGUAGE } from './lang'
 
 /*
  * Types
