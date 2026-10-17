@@ -62,6 +62,9 @@ const viteHtmlRenderer = createViteHtmlRenderer({
 
 const { middleware } = createInertia({
   version: '1',
+  // Signs the one-shot flash cookie (success messages after create/update/delete).
+  // Set INERTIA_FLASH_SECRET in production; the fallback is dev-only.
+  flashSecret: process.env.INERTIA_FLASH_SECRET ?? 'dev-insecure-flash-secret',
   share: (c) => ({ locale: { lang: getContentLanguage(c) } }),
   renderHtml: async (ctx) => {
     const html = await viteHtmlRenderer(ctx)

@@ -23,6 +23,19 @@ describe('translate', () => {
       expect(translate('es', 'Product name is required', [])).toBe('El nombre del producto es obligatorio')
       expect(translate('de', 'Could not create product', [])).toBe('Produkt konnte nicht erstellt werden')
     })
+
+    it('should translate flash success messages', () => {
+      expect(translate('en', 'Product created successfully', [])).toBe('Product created successfully')
+      expect(translate('es', 'Product updated successfully', [])).toBe('Producto actualizado correctamente')
+      expect(translate('fr', 'Product deleted successfully', [])).toBe('Produit supprimé avec succès')
+      expect(translate('de', 'Product created successfully', [])).toBe('Produkt erfolgreich erstellt')
+    })
+
+    it('should translate error and dismiss messages', () => {
+      expect(translate('es', 'Invalid request body', [])).toBe('Cuerpo de la solicitud no válido')
+      expect(translate('fr', 'Dismiss', [])).toBe('Fermer')
+      expect(translate('de', 'Dismiss', [])).toBe('Schließen')
+    })
   })
 
   describe('placeholder replacement', () => {

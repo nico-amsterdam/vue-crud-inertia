@@ -3,9 +3,11 @@ import { Icon } from '@iconify/vue'
 import { ref, watch } from 'vue'
 import LanguageSwitcher from '../components/LanguageSwitcher.vue'
 import { useLocale, useT } from '../composables/useLocale'
+import { useFlashSuccess } from '../composables/useFlashSuccess'
 
 const locale = useLocale()
 const t = useT()
+const { message: flashSuccess, visible: flashVisible, dismiss: dismissFlash } = useFlashSuccess()
 
 const darkmode = ref(false)
 
@@ -34,6 +36,10 @@ watch(darkmode, (value) => {
         </span>
       </div>
     </header>
+    <div v-if="flashVisible && flashSuccess" class="flash flash-success" role="status">
+      <span>{{ flashSuccess }}</span>
+      <button type="button" class="flash-dismiss" :aria-label="t('Dismiss')" @click="dismissFlash">×</button>
+    </div>
     <slot />
   </div>
 </template>
@@ -69,5 +75,37 @@ watch(darkmode, (value) => {
 .language-switcher {
   margin-right: 15px;
   vertical-align: middle
+}
+
+.flash {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 15px;
+  padding: 10px 15px;
+  border-radius: 4px
+}
+
+.flash-success {
+  background-color: #dff0d8;
+  color: #3c763d;
+  border: 1px solid #d6e9c6
+}
+
+body.dark .flash-success {
+  background-color: #1e3d2b;
+  color: #a3d9a5;
+  border-color: #2d5a3d
+}
+
+.flash-dismiss {
+  background: none;
+  border: none;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  color: inherit;
+  padding: 0 4px
 }
 </style>

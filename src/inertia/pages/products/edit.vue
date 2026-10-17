@@ -4,6 +4,7 @@ import { ref } from 'vue'
 import ProductForm from '../../components/ProductForm.vue'
 import type { ProductErrorsType, ProductType } from '../../../types/product'
 import { useT } from '../../composables/useLocale'
+import { useSubmitting } from '../../composables/useSubmitting'
 
 interface Props {
   product: ProductType
@@ -14,17 +15,11 @@ const props = defineProps<Props>()
 const t = useT()
 
 // deep-clone the product so edits are not applied directly to the prop
-const product = ref<ProductType>(JSON.parse(JSON.stringify(props.product)))
-const submitting = ref(false)
+const product = ref<ProductType>(structuredClone(props.product))
+const { submitting, submit } = useSubmitting()
 
 function update() {
-  if (!product.value || product.value.id < 0) return
-  submitting.value = true
-  router.patch(`/products/${product.value.id}`, product.value, {
-    onFinish: () => {
-      submitting.value = false
-    },
-  })
+  submit((onFinish) => router.patch(`/products/${product.value.id}`, product.value, { onFinish }))
 }
 </script>
 
@@ -33,8 +28,8 @@ function update() {
     <h2>{{ t('Edit product') }}</h2>
     <div v-if="errors?.write" class="error">{{ errors.write }}</div>
     <form v-on:submit.prevent="update">
-      <ProductForm v-model:the-product="product" :errors="errors" v-if="!!product"></ProductForm>
-      <button type="submit" class="btn btn-primary" v-if="!!product && product.id >= 0">{{ t('Save') }}</button>
+      <ProductForm v-model:the-product="product" :errors="errors"></ProductForm>
+      <button type="submit" class="btn btn-primary" :disabled="submitting">{{ t('Save') }}</button>
       {{ ' ' }}
       <Link href="/products" class="btn btn-default">{{ t('Cancel') }}</Link>
     </form>

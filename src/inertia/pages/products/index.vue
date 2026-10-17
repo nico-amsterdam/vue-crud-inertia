@@ -4,6 +4,7 @@ import { InfiniteScroll, router, Link } from '@inertiajs/vue3'
 import { computed, onMounted, ref, watch } from 'vue'
 import type { ProductType } from '../../../types/product'
 import { useT } from '../../composables/useLocale'
+import { useRefresh } from '../../composables/useSubmitting'
 
 interface Props {
   products: ProductType[]
@@ -11,16 +12,11 @@ interface Props {
   serverFilter?: boolean
   /** The name-prefix filter applied by the server (`/products/findbyname`). */
   q?: string
-  errors?: {
-    read?: string
-    write?: string
-  }
 }
 
 const props = withDefaults(defineProps<Props>(), {
   serverFilter: false,
   q: '',
-  errors: () => ({ read: '', write: '' }),
 })
 
 const t = useT()
@@ -52,9 +48,7 @@ watch(searchKey, (value) => {
   }, 300)
 })
 
-function refresh() {
-  router.reload()
-}
+const { refresh } = useRefresh()
 
 onMounted(() => {
   document.getElementById('search-element')?.focus()
@@ -94,20 +88,18 @@ onMounted(() => {
         <tbody>
           <tr v-for="product in filteredProducts" :key="product.id">
             <td>
-              <Link v-if="product.id >= 0" :href="`/products/${product.id}/edit`">{{
-                product.productName }}</Link>
-              <span v-if="product.id < 0">{{ product.productName }}</span>
+              <Link :href="`/products/${product.id}/edit`">{{ product.productName }}</Link>
             </td>
             <td>
               {{ product.description }}
             </td>
             <td class="price">
-              {{ product.price }} €
+              {{ product.price === null ? '–' : `${product.price} €` }}
             </td>
             <td class="table-actions">
-              <Link v-if="product.id >= 0" class="btn btn-warning btn-xs" :href="`/products/${product.id}/edit`">{{ t('Edit') }}</Link>
+              <Link class="btn btn-warning btn-xs" :href="`/products/${product.id}/edit`">{{ t('Edit') }}</Link>
               {{ ' ' }}
-              <Link v-if="product.id >= 0" class="btn btn-danger btn-xs" :href="`/products/${product.id}/delete`">{{ t('Delete') }}</Link>
+              <Link class="btn btn-danger btn-xs" :href="`/products/${product.id}/delete`">{{ t('Delete') }}</Link>
             </td>
           </tr>
         </tbody>

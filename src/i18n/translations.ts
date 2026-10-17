@@ -76,6 +76,11 @@ const translations: Translations = {
     'Could not update product': 'Could not update product',
     "'{0}' is changed or removed by another user. Reopen it from the list.":
       "'{0}' is changed or removed by another user. Reopen it from the list.",
+    'Product created successfully': 'Product created successfully',
+    'Product updated successfully': 'Product updated successfully',
+    'Product deleted successfully': 'Product deleted successfully',
+    'Invalid request body': 'Invalid request body',
+    'Dismiss': 'Dismiss',
   },
   es: {
     'Skip to main content': 'Saltar al contenido principal',
@@ -111,6 +116,11 @@ const translations: Translations = {
     'Could not update product': 'No se pudo actualizar el producto',
     "'{0}' is changed or removed by another user. Reopen it from the list.":
       "'{0}' fue cambiado o eliminado por otro usuario. Vuelve a abrirlo desde la lista.",
+    'Product created successfully': 'Producto creado correctamente',
+    'Product updated successfully': 'Producto actualizado correctamente',
+    'Product deleted successfully': 'Producto eliminado correctamente',
+    'Invalid request body': 'Cuerpo de la solicitud no válido',
+    'Dismiss': 'Cerrar',
   },
   fr: {
     'Skip to main content': 'Passer au contenu principal',
@@ -146,6 +156,11 @@ const translations: Translations = {
     'Could not update product': 'Impossible de mettre à jour le produit',
     "'{0}' is changed or removed by another user. Reopen it from the list.":
       "'{0}' a été modifié ou supprimé par un autre utilisateur. Rouvrez-le depuis la liste.",
+    'Product created successfully': 'Produit créé avec succès',
+    'Product updated successfully': 'Produit mis à jour avec succès',
+    'Product deleted successfully': 'Produit supprimé avec succès',
+    'Invalid request body': 'Corps de la requête non valide',
+    'Dismiss': 'Fermer',
   },
   de: {
     'Skip to main content': 'Zum Hauptinhalt springen',
@@ -181,5 +196,10 @@ const translations: Translations = {
     'Could not update product': 'Produkt konnte nicht aktualisiert werden',
     "'{0}' is changed or removed by another user. Reopen it from the list.":
       "'{0}' wurde von einem anderen Benutzer geändert oder entfernt. Öffnen Sie es erneut aus der Liste.",
+    'Product created successfully': 'Produkt erfolgreich erstellt',
+    'Product updated successfully': 'Produkt erfolgreich aktualisiert',
+    'Product deleted successfully': 'Produkt erfolgreich gelöscht',
+    'Invalid request body': 'Ungültiger Anfragetext',
+    'Dismiss': 'Schließen',
   },
 }

@@ -4,6 +4,7 @@ import { ref } from 'vue'
 import ProductForm from '../../components/ProductForm.vue'
 import type { ProductErrorsType } from '../../../types/product'
 import { useT } from '../../composables/useLocale'
+import { useSubmitting } from '../../composables/useSubmitting'
 
 interface Props {
   errors?: ProductErrorsType
@@ -15,16 +16,11 @@ withDefaults(defineProps<Props>(), {
 
 const t = useT()
 
-const submitting = ref(false)
+const { submitting, submit } = useSubmitting()
 const product = ref({ id: null, productName: '', description: '', price: null, modifiedAt: null })
 
 function createProduct() {
-  submitting.value = true
-  router.post('/products', product.value, {
-    onFinish: () => {
-      submitting.value = false
-    },
-  })
+  submit((onFinish) => router.post('/products', product.value, { onFinish }))
 }
 </script>
 
