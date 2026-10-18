@@ -79,8 +79,16 @@ export const authController = new Hono<AppEnv>()
 /**
  * Requires a valid session; redirects to the login page otherwise.
  * When authenticated it sets `authUser` and `csrfToken` on the context.
+ *
+ * Set AUTH_DISABLED=1 in `.env` to bypass authentication for local testing:
+ * every request runs as a fixed `dev:local` user (never enabled in production).
  */
 export const requireAuth: MiddlewareHandler<AppEnv> = async (c, next) => {
+  if (process.env.AUTH_DISABLED === '1' && process.env.NODE_ENV !== 'production') {
+    c.set('authUser', { login: 'dev:local', name: 'Local Dev', email: '', avatar_url: '' })
+    c.set('csrfToken', 'dev-csrf-token')
+    return next()
+  }
   const session = await readSession(c)
   if (session === null) {
     return c.redirect(LOGIN_PATH, 307)

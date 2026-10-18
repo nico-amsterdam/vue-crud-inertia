@@ -14,8 +14,10 @@ interface Props {
 const props = defineProps<Props>()
 const t = useT()
 
-// deep-clone the product so edits are not applied directly to the prop
-const product = ref<ProductType>(structuredClone(props.product))
+// copy the product so edits are not applied directly to the prop.
+// structuredClone cannot clone the reactive prop proxy, and every field is a
+// primitive (or null), so a shallow spread is a complete copy.
+const product = ref<ProductType>({ ...props.product })
 const { submitting, submit } = useSubmitting()
 const csrfHeaders = useCsrfHeaders()
 
