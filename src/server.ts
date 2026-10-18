@@ -122,7 +122,7 @@ const viteHtmlRenderer = createViteHtmlRenderer({
   manifest: isDev ? null : manifest,
   viteOrigin,
   htmlAttrs: { class: 'retro' },
-  head: raw('<link rel="stylesheet" href="/css/bootstrap3-un.css" />\n  <link rel="stylesheet" href="/css/auth.css" />'),
+  head: raw('<link rel="manifest" href="/manifest.webmanifest">\n<meta name="theme-color" content="#fddcd0">\n<link rel="apple-touch-icon" href="/images/icon-192.png">\n<meta name="description" content="Vue Inertia Demo">\n<link rel="stylesheet" href="/css/bootstrap3-un.css" />\n<link rel="stylesheet" href="/css/auth.css" />'),
 })
 
 const { middleware } = createInertia({
