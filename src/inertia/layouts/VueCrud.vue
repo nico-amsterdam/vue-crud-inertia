@@ -35,9 +35,8 @@ watch(darkmode, (value) => {
         <span class="color-scheme">
           <LanguageSwitcher />
           <span v-if="authUser" class="user">
-            <img v-if="authUser.avatar_url" :src="authUser.avatar_url" alt="" class="user-avatar" />
-            {{ authUser.name || authUser.login }}
-            <a href="/auth/login" class="logout">{{ t('Log out') }}</a>
+            <img v-if="authUser.avatar_url" :src="authUser.avatar_url" alt="" class="user-avatar" :title="(authUser.name || t('Avatar'))" />
+            <a href="/auth/login" class="btn btn-default logout">➜] {{ t('Log out') }}</a>
           </span>
           <Icon v-if="!darkmode" aria-hidden="false" role="button" icon="tabler:sun" width="1.5em" :title="t('Toggle dark mode')" class="sun"
             @click="toggleDark" />
@@ -89,8 +88,8 @@ watch(darkmode, (value) => {
 }
 
 .user-avatar {
-  width: 24px;
-  height: 24px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
   vertical-align: middle;
   margin-right: 5px;
