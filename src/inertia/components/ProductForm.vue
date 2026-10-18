@@ -39,3 +39,9 @@ onMounted(() => {
     </div>
   </span>
 </template>
+
+<style scoped>
+.form-group {
+  max-width: 500px
+}
+</style>
