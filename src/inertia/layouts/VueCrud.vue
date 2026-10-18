@@ -1,13 +1,18 @@
 <script setup lang="ts">
 import { Icon } from '@iconify/vue'
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { usePage } from '@inertiajs/vue3'
 import LanguageSwitcher from '../components/LanguageSwitcher.vue'
 import { useLocale, useT } from '../composables/useLocale'
 import { useFlashSuccess } from '../composables/useFlashSuccess'
+import type { UserType } from '../../routes/auth/common'
 
 const locale = useLocale()
 const t = useT()
 const { message: flashSuccess, visible: flashVisible, dismiss: dismissFlash } = useFlashSuccess()
+
+const page = usePage<{ authUser?: UserType | null }>()
+const authUser = computed(() => page.props.authUser ?? null)
 
 const darkmode = ref(false)
 
@@ -29,6 +34,11 @@ watch(darkmode, (value) => {
         <h1>Vue CRUD Inertia</h1>
         <span class="color-scheme">
           <LanguageSwitcher />
+          <span v-if="authUser" class="user">
+            <img v-if="authUser.avatar_url" :src="authUser.avatar_url" alt="" class="user-avatar" />
+            {{ authUser.name || authUser.login }}
+            <a href="/auth/login" class="logout">{{ t('Log out') }}</a>
+          </span>
           <Icon v-if="!darkmode" aria-hidden="false" role="button" icon="tabler:sun" width="1.5em" :title="t('Toggle dark mode')" class="sun"
             @click="toggleDark" />
           <Icon v-if="darkmode" aria-hidden="false" role="button" icon="tabler:moon" width="1.5em" :title="t('Toggle dark mode')" class="moon"
@@ -53,6 +63,14 @@ watch(darkmode, (value) => {
 
 .branding .user {
   float:right;
+}
+
+.user-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  vertical-align: middle;
+  margin-right: 5px;
 }
 
 .logout {

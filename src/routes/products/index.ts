@@ -109,7 +109,7 @@ const app = new Hono<AppEnv>()
         name: result.data.productName,
         description: result.data.description,
         price: priceToCents(result.data.price),
-        createdBy: DEFAULT_USER,
+        createdBy: c.var.authUser?.login ?? DEFAULT_USER,
       })
       await flashSuccess(c, t(c, 'Product created successfully'))
       return c.redirect('/products', 303)
@@ -167,7 +167,7 @@ const app = new Hono<AppEnv>()
           name: result.data.productName,
           description: result.data.description,
           price: priceToCents(result.data.price),
-          modifiedBy: DEFAULT_USER,
+          modifiedBy: c.var.authUser?.login ?? DEFAULT_USER,
           modifiedAt: new Date(),
         })
         .where(and(

@@ -9,6 +9,8 @@ import {
 import manifest from './generated/manifest'
 import type { AppEnv } from './types/env'
 import { getContentLanguage, getLang, LANG_COOKIE, setContentLanguage, STANDARD_LANGUAGE } from './i18n/lang'
+import { allowRequest } from './lib/security'
+import { authController, csrfProtect, requireAuth } from './routes/auth'
 import products from './routes/products'
 
 const isDev = process.env.NODE_ENV !== 'production'
@@ -58,7 +60,7 @@ function buildCsp(nonce: string): string {
       : `script-src 'nonce-${nonce}' 'strict-dynamic' 'self' 'unsafe-inline'`,
     // 'unsafe-inline' for style attributes (Vue/Iconify); compiled styles are external.
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self'",
+    "img-src 'self' https://avatars.githubusercontent.com https://*.googleusercontent.com",
     "font-src 'self'",
     isDev ? `connect-src 'self' ws://localhost:${vitePort}` : "connect-src 'self'",
     "object-src 'none'",
@@ -100,13 +102,24 @@ base.use(async (c, next) => {
   await next()
 })
 
+/*
+ * Reject cross-site requests that are not simple navigations (fetch metadata).
+ * See https://web.dev/articles/fetch-metadata
+ */
+base.use(async (c, next) => {
+  if (!allowRequest(c.req.method, c.req.path, c.req.header())) {
+    return c.text('Forbidden', 403)
+  }
+  await next()
+})
+
 const viteHtmlRenderer = createViteHtmlRenderer({
   dev: isDev,
   entry: 'src/inertia/main.ts',
   manifest: isDev ? null : manifest,
   viteOrigin,
   htmlAttrs: { class: 'retro' },
-  head: raw('<link rel="stylesheet" href="/css/bootstrap3-un.css" />'),
+  head: raw('<link rel="stylesheet" href="/css/bootstrap3-un.css" />\n  <link rel="stylesheet" href="/css/auth.css" />'),
 })
 
 const { middleware } = createInertia({
@@ -114,7 +127,11 @@ const { middleware } = createInertia({
   // Signs the one-shot flash cookie (success messages after create/update/delete).
   // Set INERTIA_FLASH_SECRET in production; the fallback is dev-only.
   flashSecret: process.env.INERTIA_FLASH_SECRET ?? 'dev-insecure-flash-secret',
-  share: (c) => ({ locale: { lang: getContentLanguage(c) } }),
+  share: (c) => ({
+    locale: { lang: getContentLanguage(c) },
+    authUser: c.get('authUser') ?? null,
+    csrfToken: c.get('csrfToken') ?? '',
+  }),
   renderHtml: async (ctx) => {
     const html = await viteHtmlRenderer(ctx)
     // createViteHtmlRenderer only accepts a static `lang`, so swap it for the request language.
@@ -132,6 +149,8 @@ base.use(middleware)
  */
 export const app = base
   .get('/', (c) => c.redirect('/products'))
+  .route('/auth', authController)
+  .use('/products', requireAuth, csrfProtect)
   .route('/products', products)
 
 export type AppType = typeof app

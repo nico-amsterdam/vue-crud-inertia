@@ -4,7 +4,7 @@ import { ref } from 'vue'
 import ProductForm from '../../components/ProductForm.vue'
 import type { ProductErrorsType } from '../../../types/product'
 import { useT } from '../../composables/useLocale'
-import { useSubmitting } from '../../composables/useSubmitting'
+import { useCsrfHeaders, useSubmitting } from '../../composables/useSubmitting'
 
 interface Props {
   errors?: ProductErrorsType
@@ -17,10 +17,11 @@ withDefaults(defineProps<Props>(), {
 const t = useT()
 
 const { submitting, submit } = useSubmitting()
+const csrfHeaders = useCsrfHeaders()
 const product = ref({ id: null, productName: '', description: '', price: null, modifiedAt: null })
 
 function createProduct() {
-  submit((onFinish) => router.post('/products', product.value, { onFinish }))
+  submit((onFinish) => router.post('/products', product.value, { ...csrfHeaders.value, onFinish }))
 }
 </script>
 

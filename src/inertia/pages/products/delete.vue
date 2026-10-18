@@ -2,7 +2,7 @@
 import { Link, router } from '@inertiajs/vue3'
 import type { ProductType } from '../../../types/product'
 import { useT } from '../../composables/useLocale'
-import { useSubmitting } from '../../composables/useSubmitting'
+import { useCsrfHeaders, useSubmitting } from '../../composables/useSubmitting'
 
 interface Props {
   product: ProductType
@@ -11,9 +11,10 @@ interface Props {
 const props = defineProps<Props>()
 const t = useT()
 const { submitting, submit } = useSubmitting()
+const csrfHeaders = useCsrfHeaders()
 
 function remove() {
-  submit((onFinish) => router.delete(`/products/${props.product.id}`, { onFinish }))
+  submit((onFinish) => router.delete(`/products/${props.product.id}`, { ...csrfHeaders.value, onFinish }))
 }
 </script>
 

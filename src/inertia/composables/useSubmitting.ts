@@ -1,5 +1,5 @@
-import { ref } from 'vue'
-import { router } from '@inertiajs/vue3'
+import { ref, computed } from 'vue'
+import { router, usePage } from '@inertiajs/vue3'
 
 /**
  * Tracks an Inertia form submission: sets `submitting` while the visit is
@@ -30,4 +30,17 @@ export function useRefresh() {
   return {
     refresh: () => router.reload(),
   }
+}
+
+/**
+ * `headers` for state-changing Inertia visits: the server verifies the
+ * `x-csrf-token` header against the token in the signed session cookie.
+ *
+ * ```ts
+ * router.post('/things', data, { headers: csrfHeaders.value })
+ * ```
+ */
+export function useCsrfHeaders() {
+  const page = usePage<{ csrfToken?: string }>()
+  return computed(() => ({ headers: { 'x-csrf-token': page.props.csrfToken ?? '' } }))
 }

@@ -4,7 +4,7 @@ import { ref } from 'vue'
 import ProductForm from '../../components/ProductForm.vue'
 import type { ProductErrorsType, ProductType } from '../../../types/product'
 import { useT } from '../../composables/useLocale'
-import { useSubmitting } from '../../composables/useSubmitting'
+import { useCsrfHeaders, useSubmitting } from '../../composables/useSubmitting'
 
 interface Props {
   product: ProductType
@@ -17,9 +17,10 @@ const t = useT()
 // deep-clone the product so edits are not applied directly to the prop
 const product = ref<ProductType>(structuredClone(props.product))
 const { submitting, submit } = useSubmitting()
+const csrfHeaders = useCsrfHeaders()
 
 function update() {
-  submit((onFinish) => router.patch(`/products/${product.value.id}`, product.value, { onFinish }))
+  submit((onFinish) => router.patch(`/products/${product.value.id}`, product.value, { ...csrfHeaders.value, onFinish }))
 }
 </script>
 
