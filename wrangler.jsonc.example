@@ -39,9 +39,8 @@
      *
 	 * Use this command
 	 * 'bun wrangler secret put GOOGLE_CLIENT_SECRET'
-	 * to add a google secret 
+	 * to add a google secret
 	 */
-	// "vars": {  "MY_VARIABLE": "production_value" }
     "vars": {
        "NODE_ENV": "production",
        "GITHUB_CLIENT_ID": "<fill in your Github APP token client-id>",
@@ -57,7 +56,7 @@
 			"database_name": "inertia-crud",
 			"database_id": "YOUR DATABASE ID"
 		}
-	], 
+	],
 	/**
 	 * Service Bindings (communicate between multiple Workers)
 	 * https://developers.cloudflare.com/workers/wrangler/configuration/#service-bindings

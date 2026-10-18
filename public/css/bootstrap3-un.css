@@ -32,6 +32,10 @@
     display: none
 }
 
+body {
+    margin: 0
+}
+
 .retro {
     /*!
      * Bootstrap v3.3.7 (http://getbootstrap.com)

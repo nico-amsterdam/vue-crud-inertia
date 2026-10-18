@@ -37,7 +37,7 @@ function loginPageHtml(c: Context, expired = false): string {
   <link rel="stylesheet" href="/css/bootstrap3-un.css">
   <link rel="stylesheet" href="/css/auth.css">
 </head>
-<body class="full-container">
+<body class="login-full-container">
   <div id="content" class="login-container">
     <main id="main" class="login-box">
       <h1 class="login-title">${title}</h1>
