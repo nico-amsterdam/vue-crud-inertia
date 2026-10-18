@@ -16,6 +16,8 @@
 	"observability": {
 		"enabled": true
 	},
+    /** Minify the Worker script before uploading. */
+	"minify": true,
 	"upload_source_maps": true,
 	/**
 	 * Static Assets
