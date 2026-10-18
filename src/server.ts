@@ -38,6 +38,8 @@ function staticServe(root: string) {
 base.use('/css/*', staticServe('./public'))
 base.use('/images/*', staticServe('./public'))
 base.use('/manifest.webmanifest', staticServe('./public'))
+base.use('/privacy.html', staticServe('./public'))
+base.use('/terms.html', staticServe('./public'))
 
 if (!isDev) {
   base.use('/assets/*', staticServe('./dist'))
