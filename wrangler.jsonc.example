@@ -42,6 +42,11 @@
 	 * to add a google secret 
 	 */
 	// "vars": {  "MY_VARIABLE": "production_value" }
+    "vars": {
+       "NODE_ENV": "production",
+       "GITHUB_CLIENT_ID": "<fill in your Github APP token client-id>",
+       "GOOGLE_CLIENT_ID": "<fill in your Google Cloud oauth client-id>"
+    },
 	"keep_vars": true,
 	/**
      * keep_vars: also keeps secrets.

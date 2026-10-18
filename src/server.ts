@@ -54,6 +54,7 @@ if (!isDev) {
  * be stale and shared between visitors.
  */
 function buildCsp(nonce: string): string {
+  const externalImages = "https://avatars.githubusercontent.com https://*.googleusercontent.com";
   const directives = [
     "default-src 'self'",
     // Vite serves the modules (and the HMR websocket) from its own origin in dev.
@@ -62,7 +63,7 @@ function buildCsp(nonce: string): string {
       : `script-src 'nonce-${nonce}' 'strict-dynamic' 'self' 'unsafe-inline'`,
     // 'unsafe-inline' for style attributes (Vue/Iconify); compiled styles are external.
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' https://avatars.githubusercontent.com https://*.googleusercontent.com",
+    isDev ? `img-src 'self' ${viteOrigin} ${externalImages}` : `img-src 'self' ${externalImages}`,
     "font-src 'self'",
     isDev ? `connect-src 'self' ws://localhost:${vitePort}` : "connect-src 'self'",
     "object-src 'none'",
@@ -152,7 +153,10 @@ base.use(middleware)
 export const app = base
   .get('/', (c) => c.redirect('/products'))
   .route('/auth', authController)
-  .use('/products', requireAuth, csrfProtect)
+  // '/products/*' (not '/products') so the middleware also runs on subpaths:
+  // /products/new, /products/:id/edit, and every mutating subpath. Hono's
+  // '.use("/products", ...)' matches the exact path only.
+  .use('/products/*', requireAuth, csrfProtect)
   .route('/products', products)
 
 export type AppType = typeof app

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Icon } from '@iconify/vue'
+import { Icon } from '@iconify/vue/offline'
 import { InfiniteScroll, router, Link } from '@inertiajs/vue3'
 import { computed, onMounted, ref, watch } from 'vue'
 import type { ProductType } from '../../../types/product'

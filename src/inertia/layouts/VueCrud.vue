@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Icon } from '@iconify/vue'
+import { Icon } from '@iconify/vue/offline'
 import { computed, ref, watch } from 'vue'
 import { usePage } from '@inertiajs/vue3'
 import LanguageSwitcher from '../components/LanguageSwitcher.vue'

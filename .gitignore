@@ -16,7 +16,7 @@ sqlite.db
 /dist
 /public/javascript/*.js
 worker-configuration.d.ts
-src/generated/manifest.ts
+src/generated/
 
 # misc
 .DS_Store
