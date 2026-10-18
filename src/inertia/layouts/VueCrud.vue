@@ -25,7 +25,7 @@ watch(darkmode, (value) => {
   <div class="container" :class="['lang-' + locale.lang]">
     <header class="page-header">
       <div class="branding">
-        <img src="https://vuejs.org/images/logo.png" alt="Vue logo" class="logo"/>
+        <img src="/images/vue-logo.png" alt="Vue logo" class="logo"/>
         <h1>Vue CRUD Inertia</h1>
         <span class="color-scheme">
           <LanguageSwitcher />

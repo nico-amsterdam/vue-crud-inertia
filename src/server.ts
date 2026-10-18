@@ -12,6 +12,8 @@ import { getContentLanguage, getLang, LANG_COOKIE, setContentLanguage, STANDARD_
 import products from './routes/products'
 
 const isDev = process.env.NODE_ENV !== 'production'
+const vitePort = Number(process.env.VITE_PORT ?? 5173)
+const viteOrigin = `http://localhost:${vitePort}`
 
 const base = new Hono<AppEnv>()
 
@@ -32,11 +34,57 @@ function staticServe(root: string) {
 }
 
 base.use('/css/*', staticServe('./public'))
+base.use('/images/*', staticServe('./public'))
 base.use('/manifest.webmanifest', staticServe('./public'))
 
 if (!isDev) {
   base.use('/assets/*', staticServe('./dist'))
 }
+
+/*
+ * Content-Security-Policy with a per-request nonce. The nonce is injected
+ * into every `<script type="module">` tag of rendered HTML pages and shipped
+ * in the CSP header; `'strict-dynamic'` extends the trust to the chunks the
+ * entry module imports. The `data-page` JSON island is not executed, so it
+ * needs no nonce. HTML responses are marked `no-store`: a cached nonce would
+ * be stale and shared between visitors.
+ */
+function buildCsp(nonce: string): string {
+  const directives = [
+    "default-src 'self'",
+    // Vite serves the modules (and the HMR websocket) from its own origin in dev.
+    isDev
+      ? `script-src 'self' ${viteOrigin}`
+      : `script-src 'nonce-${nonce}' 'strict-dynamic' 'self' 'unsafe-inline'`,
+    // 'unsafe-inline' for style attributes (Vue/Iconify); compiled styles are external.
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self'",
+    "font-src 'self'",
+    isDev ? `connect-src 'self' ws://localhost:${vitePort}` : "connect-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+    "manifest-src 'self'",
+  ]
+  return directives.join('; ')
+}
+
+base.use(async (c, next) => {
+  const bytes = crypto.getRandomValues(new Uint8Array(16))
+  const nonce = btoa(String.fromCharCode(...bytes))
+  await next()
+  if (!(c.res.headers.get('content-type') ?? '').includes('text/html')) return
+
+  const html = await c.res.text()
+  const headers = new Headers(c.res.headers)
+  headers.set('Content-Security-Policy', buildCsp(nonce))
+  headers.set('Cache-Control', 'no-store')
+  c.res = new Response(
+    html.replace(/<script type="module"/g, `<script type="module" nonce="${nonce}"`),
+    { status: c.res.status, statusText: c.res.statusText, headers },
+  )
+})
 
 /*
  * Language: `?lang=xx` switches (and remembers in a cookie), otherwise the
@@ -56,6 +104,7 @@ const viteHtmlRenderer = createViteHtmlRenderer({
   dev: isDev,
   entry: 'src/inertia/main.ts',
   manifest: isDev ? null : manifest,
+  viteOrigin,
   htmlAttrs: { class: 'retro' },
   head: raw('<link rel="stylesheet" href="/css/bootstrap3-un.css" />'),
 })
