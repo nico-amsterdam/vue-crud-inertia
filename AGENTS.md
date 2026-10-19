@@ -42,12 +42,13 @@ Middleware runs in this order; keep new cross-cutting middleware in the right sl
 - `composables/useSubmitting.ts`: `submit()` (tracks in-flight state) and `useCsrfHeaders()` — **every mutating visit (`router.post/patch/delete`) must spread `{ ...csrfHeaders.value }` into the visit options**
 - `composables/useFlashSuccess.ts`: shows `flash.success` after redirects
 - `composables/useLocale.ts`: client-side `t()` mirroring server translations
+- `composables/useProductSearch.ts`: the product search value — kept at module scope (never in the URL), so it survives the page remount after cancel/save; when the server filters, the list re-applies it on mount with `router.get('/products/findbyname', { q }, { replace: true })`
 
 Protocol notes:
 
 - Page props arrive in `<script data-page="app" type="application/json">` (not a div attribute)
 - Mutating requests must send header `x-csrf-token` = `page.props.csrfToken`; the server compares it to the token in the signed session (`csrfProtect` in `src/routes/auth/index.ts`)
-- On 303 redirects Inertia v3 performs a full page navigation; that is expected, not a bug
+- A `303` after a mutation is **not** a full page load: the XHR client follows it in the background and the final `GET` swaps the page in-app — but the page component remounts (`edit` → `index`), so page-local state is lost. Real full page loads only happen for plain `<a>` tags (logout), `window.location` writes (LanguageSwitcher), and `409` + `x-inertia-location` (the adapter's `external()`/`location()`)
 - "Load more" on the product list is `<InfiniteScroll>` (from `@inertiajs/vue3`) with header `x-inertia-infinite-scroll-merge-intent` (`isLoadMoreRequest` in `src/routes/products/index.ts`)
 
 ## Auth & CSRF

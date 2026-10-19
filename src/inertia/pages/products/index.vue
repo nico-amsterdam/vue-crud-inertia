@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { Icon } from '@iconify/vue/offline'
 import { InfiniteScroll, router, Link } from '@inertiajs/vue3'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, watch } from 'vue'
 import type { ProductType } from '../../../types/product'
 import { useT } from '../../composables/useLocale'
+import { useProductSearch } from '../../composables/useProductSearch'
 import { useRefresh } from '../../composables/useSubmitting'
 
 interface Props {
@@ -21,7 +22,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const t = useT()
 
-const searchKey = ref(props.q)
+const searchKey = useProductSearch(props.q)
 const productList = computed(() => props.products)
 const filteredProducts = computed(() => {
   if (props.serverFilter) {
@@ -48,10 +49,19 @@ watch(searchKey, (value) => {
   }, 300)
 })
 
+// The latest input is already kept by useProductSearch, so a pending
+// debounced visit must not fire a navigation after the user left the list.
+onBeforeUnmount(() => clearTimeout(searchTimer))
+
 const { refresh } = useRefresh()
 
 onMounted(() => {
   document.getElementById('search-element')?.focus()
+  // The search value is not part of the URL, so a bare /products load arrives
+  // unfiltered: re-apply the kept filter server-side for lists the server filters.
+  if (props.serverFilter && searchKey.value !== '' && searchKey.value !== props.q) {
+    router.get('/products/findbyname', { q: searchKey.value }, { replace: true })
+  }
 })
 </script>
 
@@ -119,7 +129,7 @@ onMounted(() => {
 
 <style scoped>
 .form-actions {
-  padding: 10px 0
+  padding: 3px 0 10px
 }
 
 .plussign {

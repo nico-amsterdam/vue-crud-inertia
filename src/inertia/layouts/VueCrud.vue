@@ -45,7 +45,7 @@ watch(darkmode, (value) => {
         </span>
       </div>
     </header>
-    <div v-if="flashVisible && flashSuccess" class="flash flash-success" role="status">
+    <div class="flash flash-success" :class="{ 'flash--visible': flashVisible && flashSuccess }" role="status">
       <span>{{ flashSuccess }}</span>
       <button type="button" class="flash-dismiss" :aria-label="t('Dismiss')" @click="dismissFlash">×</button>
     </div>
@@ -122,9 +122,16 @@ watch(darkmode, (value) => {
   justify-content: space-between;
   align-items: center;
   gap: 10px;
-  margin: 0 0 15px;
-  padding: 10px 15px;
-  border-radius: 4px
+  margin: 0 0 5px;
+  padding: 3px 15px;
+  border-radius: 4px;
+  /* Always rendered (hidden when there is no message) so the flash reserves
+     its space and showing or dismissing it never shifts the content below. */
+  visibility: hidden
+}
+
+.flash--visible {
+  visibility: visible
 }
 
 .flash-success {

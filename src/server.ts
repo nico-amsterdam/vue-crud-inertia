@@ -65,7 +65,7 @@ function buildCsp(nonce: string): string {
     "style-src 'self' 'unsafe-inline'",
     isDev ? `img-src 'self' ${viteOrigin} ${externalImages}` : `img-src 'self' ${externalImages}`,
     "font-src 'self'",
-    isDev ? `connect-src 'self' ws://localhost:${vitePort}` : "connect-src 'self'",
+    isDev ? `connect-src 'self' ws://localhost:${vitePort} ${viteOrigin}` : "connect-src 'self'",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
