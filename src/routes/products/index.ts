@@ -1,5 +1,5 @@
 import { Hono, type Context } from 'hono'
-import { offsetPaginate, render, scroll } from '@sneakylenny/inertia-hono'
+import { render, scroll } from '@sneakylenny/inertia-hono'
 import { and, eq, isNull } from 'drizzle-orm'
 import { getDB, tables } from '../../db/index'
 import type { ProductBaseType, ProductType } from '../../types/product'
@@ -7,12 +7,10 @@ import type { AppEnv } from '../../types/env'
 import { t } from '../../i18n/request'
 import { rateLimit } from '../../middleware/rate-limit'
 import {
-  countProducts,
   DEFAULT_USER,
   getProductById,
   loadProductsPage,
   namePrefixPattern,
-  PER_PAGE,
   priceToCents,
   productNameExists,
   toProduct,
@@ -47,9 +45,16 @@ async function readJsonBody(c: Context): Promise<Partial<ProductBaseType> | null
 
 /** Wrap a page of products for `<InfiniteScroll>`: appended on "load more",
  *  and reset whenever the list is loaded outside of a "load more" request
- *  (initial load or filter change). */
-function pagedProducts(c: Context, products: ProductType[], page: number, total: number) {
-  return scroll(products, offsetPaginate({ page, perPage: PER_PAGE, total }))
+ *  (initial load or filter change). Pagination metadata comes from the
+ *  `PER_PAGE + 1` over-fetch — no `count(*)` needed: a next page exists
+ *  exactly when the extra row was returned. */
+function pagedProducts(c: Context, products: ProductType[], page: number, hasMore: boolean) {
+  return scroll(products, {
+    pageName: 'page',
+    currentPage: page,
+    previousPage: page > 1 ? page - 1 : null,
+    nextPage: hasMore ? page + 1 : null,
+  })
     .match('id')
     .resetWhen(!isLoadMoreRequest(c))
 }
@@ -62,11 +67,12 @@ async function flashSuccess(c: Context, message: string): Promise<void> {
 const app = new Hono<AppEnv>()
   .get('/', async (c) => {
     const page = readPage(c)
-    const { total } = await countProducts()
-    const products = await loadProductsPage(page)
+    const { products, hasMore } = await loadProductsPage(page)
     return render(c, 'products/index', {
-      products: pagedProducts(c, products, page, total),
-      serverFilter: total > PER_PAGE,
+      products: pagedProducts(c, products, page, hasMore),
+      // Total > PER_PAGE: the over-fetched extra row proves it on page 1;
+      // any row on a later page already sits beyond PER_PAGE.
+      serverFilter: hasMore || (page > 1 && products.length > 0),
       q: '',
     })
   })
@@ -80,11 +86,12 @@ const app = new Hono<AppEnv>()
     const q = (c.req.query('q') ?? '').slice(0, MAX_NAME_LENGTH)
     const page = readPage(c)
     const pattern = namePrefixPattern(q)
-    const { total, matched } = await countProducts(pattern)
-    const products = await loadProductsPage(page, pattern)
+    const { products, hasMore } = await loadProductsPage(page, pattern)
     return render(c, 'products/index', {
-      products: pagedProducts(c, products, page, matched),
-      serverFilter: total > PER_PAGE,
+      products: pagedProducts(c, products, page, hasMore),
+      // Only called when the list exceeds PER_PAGE (the client switches to
+      // server filtering in that mode), so no count is needed here.
+      serverFilter: true,
       q,
     })
   })

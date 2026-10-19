@@ -30,20 +30,10 @@ export function namePrefixPattern(q: string): string {
   return `${q.replace(/[\\%_]/g, (m) => `\\${m}`)}%`
 }
 
-export async function countProducts(namePattern?: string): Promise<{ total: number; matched: number }> {
-  const row = await getDB().get<{ total: number; matched: number | null }>(
-    namePattern === undefined
-      ? sql`select count(*) as total, count(*) as matched from ${tables.products}`
-      : sql`
-          select count(*) as total,
-                 sum(case when ${tables.products.name} like ${namePattern} escape '\\' then 1 else 0 end) as matched
-          from ${tables.products}
-        `,
-  )
-  return { total: row?.total ?? 0, matched: row?.matched ?? 0 }
-}
-
-export async function loadProductsPage(page: number, namePattern?: string): Promise<ProductType[]> {
+export async function loadProductsPage(
+  page: number,
+  namePattern?: string,
+): Promise<{ products: ProductType[]; hasMore: boolean }> {
   const dbProducts = await getDB()
     .select()
     .from(tables.products)
@@ -51,9 +41,15 @@ export async function loadProductsPage(page: number, namePattern?: string): Prom
       ? undefined
       : sql`${tables.products.name} like ${namePattern} escape '\\'`)
     .orderBy(asc(tables.products.name))
-    .limit(PER_PAGE)
+    // Over-fetch one row instead of running `count(*)`: a full extra row means
+    // another page exists (on page 1 that is exactly `total > PER_PAGE`).
+    .limit(PER_PAGE + 1)
     .offset((page - 1) * PER_PAGE)
-  return dbProducts.map(toProduct)
+  const hasMore = dbProducts.length > PER_PAGE
+  return {
+    products: (hasMore ? dbProducts.slice(0, PER_PAGE) : dbProducts).map(toProduct),
+    hasMore,
+  }
 }
 
 export async function getProductById(id: number): Promise<DBProduct | undefined> {
