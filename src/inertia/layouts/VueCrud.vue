@@ -29,6 +29,12 @@ function closeNetworkError() {
   networkErrDialog.value?.close?.()
 }
 
+function onDialogBackdropClick(event: MouseEvent) {
+  if (event.target === networkErrDialog.value) {
+    closeNetworkError()
+  }
+}
+
 onMounted(() => {
   document.addEventListener('inertia:networkError', onNetworkError)
 })
@@ -67,7 +73,7 @@ watch(darkmode, (value) => {
       <button type="button" class="flash-dismiss" :aria-label="t('Dismiss')" @click="dismissFlash">×</button>
     </div>
     <slot />
-    <dialog ref="networkErrDialog" id="networkErrDialog">
+    <dialog ref="networkErrDialog" id="networkErrDialog" @click="onDialogBackdropClick">
       <h2>Network error</h2>
       <p>Offline? Check your connection</p>
       <button type="button" @click="closeNetworkError">Close</button>
