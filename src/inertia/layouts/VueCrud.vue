@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Icon } from '@iconify/vue/offline'
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { usePage } from '@inertiajs/vue3'
 import LanguageSwitcher from '../components/LanguageSwitcher.vue'
 import { useLocale, useT } from '../composables/useLocale'
@@ -15,10 +15,27 @@ const page = usePage<{ authUser?: UserType | null }>()
 const authUser = computed(() => page.props.authUser ?? null)
 
 const darkmode = ref(false)
+const networkErrDialog = ref<HTMLDialogElement | null>(null)
 
 function toggleDark() {
   darkmode.value = !darkmode.value
 }
+
+function onNetworkError() {
+  networkErrDialog.value?.showModal?.()
+}
+
+function closeNetworkError() {
+  networkErrDialog.value?.close?.()
+}
+
+onMounted(() => {
+  document.addEventListener('inertia:networkError', onNetworkError)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('inertia:networkError', onNetworkError)
+})
 
 watch(darkmode, (value) => {
   document.body.classList.toggle('dark', value)
@@ -50,6 +67,11 @@ watch(darkmode, (value) => {
       <button type="button" class="flash-dismiss" :aria-label="t('Dismiss')" @click="dismissFlash">×</button>
     </div>
     <slot />
+    <dialog ref="networkErrDialog" id="networkErrDialog">
+      <h2>Network error</h2>
+      <p>Offline? Check your connection</p>
+      <button type="button" @click="closeNetworkError">Close</button>
+    </dialog>
   </div>
 </template>
 
