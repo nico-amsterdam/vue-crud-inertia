@@ -1,6 +1,7 @@
 import type { Context } from 'hono'
 import { deleteCookie, getSignedCookie, setSignedCookie } from 'hono/cookie'
 import { generateSecureRandomString, getIp, stripMobileDesktopFromUserAgent } from '../../lib/security'
+import { DEV_SESSION_SECRET, requireSecret } from '../../lib/secrets'
 
 /*
  * Types
@@ -35,8 +36,8 @@ export const LOGIN_PATH = AUTH_PATH + '/login'
 export const SESSION_COOKIE = 'SESSION'
 
 /** Secret used to sign the session cookie and to calculate the OAuth state HMAC.
- *  Override with the SESSION_SECRET environment variable in production. */
-export const SESSION_SECRET = process.env.SESSION_SECRET ?? 'dev-insecure-session-secret'
+ *  In production the app refuses to start unless SESSION_SECRET is set. */
+export const SESSION_SECRET = requireSecret('SESSION_SECRET', DEV_SESSION_SECRET)
 
 /*
  * Functions

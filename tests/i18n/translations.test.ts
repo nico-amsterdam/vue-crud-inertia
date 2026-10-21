@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'bun:test'
-import { newLocale, translate } from '../../src/i18n/translations'
+import { ALL_LANGUAGES, STANDARD_LANGUAGE } from '../../src/i18n/lang'
+import { getTranslationKeys, newLocale, translate } from '../../src/i18n/translations'
 
 describe('translate', () => {
   describe('basic translations', () => {
@@ -49,6 +50,11 @@ describe('translate', () => {
     it('should handle empty args array', () => {
       expect(translate('en', 'Cancel', [])).toBe('Cancel')
     })
+
+    it('should insert replacement-pattern characters literally', () => {
+      expect(translate('en', 'Delete {0}', ['$&'])).toBe('Delete $&')
+      expect(translate('en', 'Delete {0}', ["$' and $1"])).toBe("Delete $' and $1")
+    })
   })
 
   describe('fallback behavior', () => {
@@ -61,6 +67,38 @@ describe('translate', () => {
       expect(translate('zh', 'Login', [])).toBe('Login')
       expect(translate('', 'Add product', [])).toBe('Add product')
     })
+  })
+})
+
+describe('translation parity', () => {
+  it('defines the same keys in every supported language', () => {
+    const standardKeys = getTranslationKeys(STANDARD_LANGUAGE).sort()
+
+    expect(standardKeys.length).toBeGreaterThan(0)
+
+    for (const lang of ALL_LANGUAGES) {
+      expect({ lang, keys: getTranslationKeys(lang).sort() }).toEqual({
+        lang,
+        keys: standardKeys,
+      })
+    }
+  })
+
+  it('uses the same placeholders as the standard language', () => {
+    const placeholders = (value: string) =>
+      [...value.matchAll(/\{\d+\}/g)].map((match) => match[0]).sort()
+
+    for (const key of getTranslationKeys(STANDARD_LANGUAGE)) {
+      const standardPlaceholders = placeholders(translate(STANDARD_LANGUAGE, key, []))
+
+      for (const lang of ALL_LANGUAGES) {
+        expect({ lang, key, placeholders: placeholders(translate(lang, key, [])) }).toEqual({
+          lang,
+          key,
+          placeholders: standardPlaceholders,
+        })
+      }
+    }
   })
 })
 

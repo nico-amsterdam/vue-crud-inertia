@@ -15,6 +15,7 @@
     "src/**/*.ts",
     "src/**/*.vue",
     "src/env.d.ts",
+    "worker-configuration.d.ts",
     "vite.config.ts"
   ]
 }

@@ -5,7 +5,3 @@ declare module '*.vue' {
   const component: DefineComponent<object, object, unknown>
   export default component
 }
-
-declare module 'cloudflare:workers' {
-  export const env: { DB: any }
-}

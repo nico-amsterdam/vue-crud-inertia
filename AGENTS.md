@@ -53,9 +53,9 @@ Protocol notes:
 
 ## Auth & CSRF
 
-- `src/routes/auth/common.ts`: signed `SESSION` cookie (httpOnly, SameSite=Lax, secure on HTTPS), bound to stripped user-agent + IP. Secret: `SESSION_SECRET` env with a dev-only fallback in code—change it for production
+- `src/routes/auth/common.ts`: signed `SESSION` cookie (httpOnly, SameSite=Lax, secure on HTTPS), bound to stripped user-agent + IP. Secret: `SESSION_SECRET`, resolved by `src/lib/secrets.ts` (dev fallback; production fails fast unless it is a random string of at least 32 characters)
 - `src/routes/auth/index.ts`:
-  - `requireAuth`: reads the session, sets `authUser` + `csrfToken` on the context. With `AUTH_DISABLED=1` (dev only, never in production) it bypasses login as fixed user `dev:local` / token `dev-csrf-token`
+  - `requireAuth`: reads the session, sets `authUser` + `csrfToken` on the context. With `AUTH_DISABLED=1` (dev only, never in production) it bypasses login as fixed user `dev:local` / token `dev-csrf-token`. Inertia requests without a session get `409` + `X-Inertia-Location: /auth/login` so the client performs a real page visit instead of rendering the login HTML as an XHR error
   - `csrfProtect`: rejects `POST/PUT/PATCH/DELETE` without a matching `x-csrf-token` header (`403 Invalid CSRF token`)
   - Login page at `/auth/login` is plain server-rendered HTML (GET clears the session = logout)
 - `src/routes/auth/github.ts` / `google.ts`: OAuth start + callback. State is an HMAC (`calcStateHmac`) over IP/UA/protocol; redirect URIs derive from the request origin (`src/lib/url.ts`): `<origin>/auth/github` and `<origin>/auth/google`
@@ -70,12 +70,12 @@ Protocol notes:
 
 - Languages: `en` (default), `de`, `es`, `fr` — `src/i18n/lang.ts`
 - Server: `t(c, 'Key')` with `{0}` placeholders (`src/i18n/request.ts`, translations in `src/i18n/translations.ts`)
-- Client: `useT()` from `src/inertia/composables/useLocale.ts` — **add new strings to both the server translations and the client composable**
+- Client: `useT()` from `src/inertia/composables/useLocale.ts` uses the same `translations.ts` table, so a new key only has to be added there (server and client share it)
 
 ## Icons
 
 - Vue components import `Icon` from `@iconify/vue/offline` (the API client is excluded; CSP blocks the Iconify API)
-- `src/generated/tabler-icons.json` is a pruned collection. To use a new icon: add its name to the list in `scripts/generate-icons.ts`, run `bun generate:icons` (the build runs it automatically), then use `<Icon icon="tabler:…" />`
+- `src/generated/tabler-icons.json` is a pruned collection. The generator scans `src/` for `icon="tabler:…"`, so adding `<Icon icon="tabler:…" />` is enough; run `bun generate:icons` (the build runs it automatically) to update the collection
 - `tests/scripts/icons.test.ts` fails if the collection and source drift apart
 
 ## Commands
@@ -83,7 +83,8 @@ Protocol notes:
 ```bash
 bun dev            # build once, then Vite (5173) + wrangler (8787)
 bun test           # run tests (bun test --watch / --coverage also work)
-bun typecheck      # tsc --noEmit
+bun typecheck      # tsc --noEmit (also regenerates src/generated/*)
+bun generate       # regenerate the Vite manifest module + pruned icon set
 bun migrate:dev    # apply migrations to local D1
 bun update:types   # regenerate worker-configuration.d.ts from wrangler.jsonc
 bun preview        # build and run the production bundle locally
@@ -95,25 +96,27 @@ Full table in [README.md](README.md).
 
 - **Hono middleware paths**: `.use('/x', mw)` is exact-path only; use `.use('/x/*', mw)` or subroutes lose auth/CSRF silently
 - **Forgetting the CSRF header**: a bare `router.post(url, data)` gets a 403. Use `useCsrfHeaders()` and spread `{ ...csrfHeaders.value }`
+- **Rendering a page directly from POST/PATCH**: the Inertia page URL stays on the mutation endpoint, so a reload 404s. Use `back(c, { errors, flash: { old } }, { fallback })` (PRG) and read `flash.old` in the form, as `products/index.ts` does
 - **`getSignedCookie` argument order**: it is `getSignedCookie(c, secret, name)` — the *reverse* of `setSignedCookie(c, name, value, secret, opts)`
 - **`structuredClone` on Vue reactive proxies** throws `DataCloneError`; copy product props with a shallow spread (`{ ...props.product }`)
 - **Mixing package managers**: install with Bun only. A pnpm/bun hybrid creates duplicate package trees and two Vue runtimes, which shows up as `Missing ref owner context` warnings and dead reactivity. If it happens: `rm -rf node_modules && bun install`
 - **Stale Vite dep cache** after upgrading packages: `rm -rf node_modules/.vite`, restart `bun dev`
-- **`usePage().props` shape**: only `locale`, `authUser`, `csrfToken` are shared globally; everything else is per-page props. A stale browser tab can send an outdated CSRF token after a server restart—hard-reload
-- **Environment**: wrangler dev loads `.env`; `AUTH_DISABLED` is ignored when `NODE_ENV=production`
+- **`usePage().props` shape**: `locale`, `authUser`, `csrfToken` are always shared; `errors` and `flash` appear on the request after a redirect. A stale browser tab can send an outdated CSRF token after a server restart—hard-reload
+- **Environment**: wrangler dev loads `.env`; `AUTH_DISABLED` is ignored when `NODE_ENV=production`. Production also requires `SESSION_SECRET` and `INERTIA_FLASH_SECRET` (≥32 random characters) — see `src/lib/secrets.ts`
 - **Worker types**: `worker-configuration.d.ts` is generated—run `bun update:types` after changing `wrangler.jsonc`, don't hand-edit it
 
 ## Testing
 
-- `tests/routes/auth/auth.test.ts`: route protection (login redirects, CSRF 403s on POST/PATCH/DELETE subpaths) via `app.request(...)`
+- `tests/routes/auth/auth.test.ts`: route protection (login redirects, Inertia 409s, CSRF 403s on POST/PATCH/DELETE subpaths) via `app.request(...)`
+- `tests/routes/products/`: page clamping, validation, price/pattern helpers and PRG error redirects
 - `tests/scripts/icons.test.ts`: icon collection drift
-- `tests/middleware/rate-limit.test.ts`, `tests/i18n/`: middleware and translations
+- `tests/middleware/rate-limit.test.ts`, `tests/i18n/`: middleware, language parsing and translations
 - Tests import the real `src/server` Hono app; they never touch the network or D1 (handlers that need the DB are not reached in these tests)
 
 ## Using this template
 
-1. Clone, `bun install`, `cp .env.example .env`, `bun migrate:dev`, `bun update:types`
+1. Clone, `bun install` (runs `prepare` and generates `src/generated/*`), `cp .env.example .env`, `cp wrangler.jsonc.example wrangler.jsonc`, `bun migrate:dev`, `bun update:types`
 2. Set OAuth client ids in `wrangler.jsonc` vars; set secrets with `bun secret:google` / `bun secret:github`
-3. Change `SESSION_SECRET` and `INERTIA_FLASH_SECRET` (dev fallbacks are hardcoded)
+3. Set `SESSION_SECRET` and `INERTIA_FLASH_SECRET` as Worker secrets with `bun secret:session` / `bun secret:flash` (≥32 random characters; local dev has fallbacks, production fails fast)
 4. Replace the products feature (routes, pages, schema) with your domain
-5. Redeploy the pruned icon list for the icons you use
+5. Add icons with `<Icon icon="tabler:…" />`; `bun generate:icons` keeps the pruned collection in sync

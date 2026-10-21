@@ -1,4 +1,5 @@
 import { Hono, type Context, type MiddlewareHandler } from 'hono'
+import { isInertiaRequest, location } from '@sneakylenny/inertia-hono'
 import { getContentLanguage, STANDARD_LANGUAGE } from '../../i18n/lang'
 import { t } from '../../i18n/request'
 import type { AppEnv } from '../../types/env'
@@ -91,6 +92,12 @@ export const requireAuth: MiddlewareHandler<AppEnv> = async (c, next) => {
   }
   const session = await readSession(c)
   if (session === null) {
+    // An Inertia visit (XHR) cannot follow a plain redirect: it would receive
+    // the login page HTML and render it in its error dialog. A 409 with
+    // X-Inertia-Location makes the client perform a real page visit instead.
+    if (isInertiaRequest(c.req.raw)) {
+      return location(c, LOGIN_PATH)
+    }
     return c.redirect(LOGIN_PATH, 307)
   }
   const authUser: UserType = {

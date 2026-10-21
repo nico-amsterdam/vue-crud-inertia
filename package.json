@@ -1,5 +1,5 @@
 {
-  "name": "hono-inertia-lenny",
+  "name": "vue-crud-inertia",
   "private": true,
   "type": "module",
   "scripts": {
@@ -10,6 +10,9 @@
     "build": "bun run generate:icons && vite build && bun run generate:manifest",
     "generate:manifest": "bun run scripts/generate-manifest.ts",
     "generate:icons": "bun run scripts/generate-icons.ts",
+    "generate": "bun run generate:icons && bun run generate:manifest",
+    "prepare": "bun run generate",
+    "pretypecheck": "bun run generate",
     "update:types": "wrangler types",
     "build:client": "bun build client/src/*.ts --outdir public/javascript/ --target browser --minify --entry-naming '/[name].[ext]'",
     "deploy:app": "bun run build && wrangler deploy",
@@ -24,6 +27,8 @@
     "test:db": "wrangler d1 execute inertia-crud --remote --command \"select * from products\";",
     "secret:github": "wrangler secret put GITHUB_CLIENT_SECRET",
     "secret:google": "wrangler secret put GOOGLE_CLIENT_SECRET",
+    "secret:session": "wrangler secret put SESSION_SECRET",
+    "secret:flash": "wrangler secret put INERTIA_FLASH_SECRET",
     "logtail": "wrangler tail vue-inertia-crud",
     "rollback:app": "wrangler rollback",
     "delete:app": "wrangler delete",
@@ -33,6 +38,7 @@
     "introspect:db": "drizzle-kit introspect",
     "dbcat:db:dev": "cross-env find .wrangler/state/v3/d1/miniflare-D1DatabaseObject -type f -name '*.sqlite' -print0 | xargs -0 ls -t | head -1 | xargs bunx dbcat"
   },
+  "license": "MIT",
   "dependencies": {
     "@inertiajs/vue3": "^3.9.1",
     "@sneakylenny/inertia-hono": "^0.4.1",

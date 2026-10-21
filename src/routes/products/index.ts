@@ -17,10 +17,15 @@ import {
 } from './store'
 import { MAX_NAME_LENGTH, translateFieldErrors, validateProduct } from './validation'
 
+/** Highest page accepted from the client. Prevents huge OFFSET values from
+ *  overflowing SQLite's integer range (e.g. `?page=1e308` used to 500).
+ */
+export const MAX_PAGE = 1_000_000
+
 /** The 1-based page number requested by the client. */
 function readPage(c: Context): number {
   const page = Number(c.req.query('page') ?? 1)
-  return Number.isFinite(page) && page >= 1 ? Math.floor(page) : 1
+  return Number.isFinite(page) && page >= 1 ? Math.min(Math.floor(page), MAX_PAGE) : 1
 }
 
 /** A valid product id from the URL (`:id` must be a positive integer). */

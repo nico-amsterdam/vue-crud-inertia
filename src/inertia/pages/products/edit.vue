@@ -31,7 +31,7 @@ function update() {
     <h2>{{ t('Edit product') }}</h2>
     <div v-if="errors?.write" class="error">{{ errors.write }}</div>
     <form v-on:submit.prevent="update">
-      <ProductForm v-model:the-product="product" :errors="errors"></ProductForm>
+      <ProductForm :the-product="product" :errors="errors"></ProductForm>
       <button type="submit" class="btn btn-primary" :disabled="submitting">{{ t('Save') }}</button>
       {{ ' ' }}
       <Link href="/products" class="btn btn-default">{{ t('Cancel') }}</Link>

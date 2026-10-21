@@ -7,10 +7,10 @@
 - ⚡ **Inertia**: Server-driven pages with smooth client-side navigation
 - ✨ **Modern user interface**: Vue 3 single-page app served by the Hono backend
 - 🧩 **Lightweight web framework**: Hono is tiny, has built-in middleware and clean APIs
-- ↻  **Live reload**: Changes in the code are immediatly visible in the browser during development
+- ↻  **Live reload**: Changes in the code are immediately visible in the browser during development
 - 💾 **Database**: Drizzle ORM with SQLite
 - 🔄 **Migrations**: Database migration system
-- ✅ **Testing**: 40+ unit tests. Run by Bun's speedy test runner
+- ✅ **Testing**: 60+ unit tests. Run by Bun's speedy test runner
 - 🧠 **Type Safety**: Full TypeScript support. Enables IDE intelliSense and real-time error checking
 - ☎  **Mobile compatible**: Responsive web design. Manifest enables 'Add to Home Screen'
 - 🕶 **Accessible**: Follows WCAG and WAI-ARIA standards for accessibility
@@ -63,12 +63,12 @@ It is great for most CRUD applications. There are a few limitations; D1 has a ma
 ├── public/                # public assets
 │   ├── css/               # stylesheets
 │   ├── images/            # images
-│   ├── privacy.html       # also served at /privacy
-│   └── terms.html         # also served at /terms
-├── scripts/               # code generators (icons, PWA manifest)
+│   ├── privacy.html       # also served at /privacy (redirect)
+│   └── terms.html         # also served at /terms (redirect)
+├── scripts/               # code generators (icons, Vite manifest module)
 ├── src/                   # source code
 │   ├── db/                # database schema and client
-│   ├── generated/         # generated files (manifest, pruned icon set)
+│   ├── generated/         # generated files (Vite manifest module, pruned icon set)
 │   ├── i18n/              # internationalization
 │   ├── inertia/           # client-side Vue application
 │   │   ├── components/    # reusable Vue components
@@ -103,10 +103,16 @@ git clone https://github.com/nico-amsterdam/vue-crud-inertia.git
 cd vue-crud-inertia
 bun install
 cp .env.example .env
-bun migrate:create
+cp wrangler.jsonc.example wrangler.jsonc
 bun migrate:dev
 bun update:types
 ```
+
+`bun install` runs the `prepare` script, which generates the Vite manifest module and the
+pruned icon set in `src/generated/`. If those files are missing (for example after deleting
+`src/generated/`), run `bun generate` before `bun test` or `bun typecheck`.
+
+After changing `src/db/schema.ts`, run `bun migrate:create` and commit the generated files.
 
 ## Setup Google and GitHub authentication
 
@@ -140,6 +146,10 @@ To run type checking in watch mode (auto-reloads on file changes):
 bun typecheck:watch
 ```
 
+`bun preview` runs the production bundle locally (`NODE_ENV=production`), so it needs a
+`INERTIA_FLASH_SECRET` of at least 32 characters in `.env` (or the environment). `bun dev`
+uses development fallbacks and does not.
+
 ## Deploy to Cloudflare
 
 In the wrangler.jsonc set your GITHUB_CLIENT_ID and GOOGLE_CLIENT_ID
@@ -147,8 +157,13 @@ In the wrangler.jsonc set your GITHUB_CLIENT_ID and GOOGLE_CLIENT_ID
 In .env set your Cloudflare account id. This is a hex string of 32 chars,
 which can be seen in the url of https://dash.cloudflare.com/ when logged in.
 
-For the first deployment, change SESSION_SECRET and INERTIA_FLASH_SECRET in .env to long random strings.
-The code falls back to hardcoded dev secrets when these variables are missing. Do not expose these secrets.
+The session and flash secrets are Worker secrets, not `.env` values. Each must be a
+random string of at least 32 characters. In production the app refuses to start if
+either secret is missing, still a placeholder from `.env.example`, or shorter than
+32 characters. Generate one with `openssl rand -base64 48`. Local development falls
+back to development-only secrets, so `bun dev` works without this setup (but
+`bun preview` and deploys do not). The secrets are set after the first deploy,
+in the block below.
 
 To deploy to cloudflare:
 ```bash
@@ -165,9 +180,14 @@ bun migrate
 bun deploy:app
 bun secret:google
 bun secret:github
+bun secret:session
+bun secret:flash
 ```
 
 Open the shown link by the deploy:app command in your browser to see the result.
+
+On the first deploy the Worker refuses to start until the session and flash secrets are
+set; running the `secret:*` commands above creates a new deployment with them.
 
 ## OAuth2 (or OpenID connect) security
 
@@ -186,7 +206,7 @@ Open the shown link by the deploy:app command in your browser to see the result.
 - The content of the local database can be quickly viewed with `bun dbcat:db:dev`
 - Automatically replicate your database around the world to improve global latency for read actions. Enable read replication for the database in the [Cloudflare dashboard](https://dash.cloudflare.com/)
 - If you define a CLOUDFLARE_API_TOKEN environment variable in the .env file, wrangler will automatically use this token (instead of `wrangler login`). Make sure that the token has enough permissions
-- Icons: the tabler icon set is pruned to the icons the app uses (`src/generated/tabler-icons.json`). When you use a new icon name in a Vue component, add it to the list in `scripts/generate-icons.ts` and run `bun generate:icons` (the build does this automatically). Icons are rendered offline through `@iconify/vue/offline`, so no requests go to the Iconify API.
+- Icons: the tabler icon set is pruned to the icons the app uses (`src/generated/tabler-icons.json`). The generators scan `src/` for `icon="tabler:…"`, so adding a new icon name in a Vue component is enough; run `bun generate:icons` (the build does this automatically) to update the collection. Icons are rendered offline through `@iconify/vue/offline`, so no requests go to the Iconify API.
 - Use only Bun for installing packages (`bun install`). Mixing package managers (for example pnpm and bun) creates duplicate package copies in node_modules; with two Vue runtimes this shows up as `Missing ref owner context` warnings and broken reactivity. If it happens anyway: `rm -rf node_modules && bun install`.
 - Stale Vite dependency cache after upgrading packages: `rm -rf node_modules/.vite` and restart `bun dev`.
 
@@ -195,8 +215,9 @@ Open the shown link by the deploy:app command in your browser to see the result.
 | Script | Description |
 |--------|-------------|
 | `bun update:types` | Generate TypeScript types from your Cloudflare Worker configuration |
+| `bun generate` | Generate the Vite manifest module and the pruned icon set |
 | `bun generate:icons` | Prune the tabler icon set down to the icons used in the app |
-| `bun generate:manifest` | Generate the PWA web manifest from package.json |
+| `bun generate:manifest` | Generate the Vite asset manifest module used by the server |
 | `bun run build` | Build client and server for production (icons, vite build, manifest) |
 | `bun typecheck` | Run TypeScript type checking without emitting files |
 | `bun typecheck:watch` | Run TypeScript type checking in watch mode |
@@ -215,6 +236,8 @@ Open the shown link by the deploy:app command in your browser to see the result.
 | `bun deploy:app` | Deploy application to Cloudflare Workers |
 | `bun secret:github` | Set GitHub OAuth client secret in Cloudflare environment |
 | `bun secret:google` | Set Google OAuth client secret in Cloudflare environment |
+| `bun secret:session` | Set the session-cookie signing secret in Cloudflare environment |
+| `bun secret:flash` | Set the Inertia flash-cookie signing secret in Cloudflare environment |
 | `bun logtail` | Stream real-time logs from deployed Cloudflare Worker |
 | `bun rollback:app` | Rollback to previous deployment version |
 | `bun delete:app` | Delete the deployed Cloudflare Worker |

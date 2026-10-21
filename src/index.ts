@@ -4,12 +4,10 @@ import { env } from 'cloudflare:workers'
 import { app } from './server'
 import * as schema from './db/schema'
 
-const db = drizzle(env.DB as any, { schema })
+const db = drizzle(env.DB, { schema })
 Container.set('DrizzleDB', db)
 
 const port = process.env.PORT ? Number(process.env.PORT) : 3000
-
-console.log(`Server: http://localhost:${port}`)
 
 export default {
   port,

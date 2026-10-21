@@ -5,7 +5,6 @@
 
 # bun
 /drizzle
-/migrations
 sqlite.db
 **/*.bun
 .env

@@ -1,11 +1,11 @@
 {
-  "name": "Vue Inertia demo",
-  "short_name": "Demo",
-  "description": "Vue Inertia CRUD demo",
+  "name": "Vue Inertia CRUD",
+  "short_name": "CRUD",
+  "description": "Authenticated CRUD demo built with Hono, Inertia and Vue",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0a0a0a",
-  "theme_color": "#00d4ff",
+  "background_color": "#fddcd0",
+  "theme_color": "#fddcd0",
   "orientation": "portrait-primary",
   "categories": ["productivity", "utilities"],
   "lang": "en",
@@ -22,17 +22,5 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ],
-  "screenshots": [
-    {
-      "src": "images/4koma.png",
-      "sizes": "261x374",
-      "type": "image/png",
-      "label": "Elysia Chan"
-    }
-  ],
-  "features": [
-    "cross-platform",
-    "touch-optimized"
   ]
 }

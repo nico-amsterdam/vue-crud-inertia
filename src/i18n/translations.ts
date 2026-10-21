@@ -20,9 +20,10 @@ export type LocaleType = {
 export function translate(lang: string, key: string, args: string[]): string {
   let translation = translations[lang]?.[key] || translations[STANDARD_LANGUAGE]?.[key] || key
 
-  // placeholder replacement
+  // placeholder replacement. Use a function so `$&`, `$1`, ... in user input
+  // are inserted literally instead of being interpreted by String#replace.
   for (let i = 0; i < args.length; i++) {
-    translation = translation.replace(new RegExp('\\{' + i + '\\}', 'g'), args[i])
+    translation = translation.replace(new RegExp('\\{' + i + '\\}', 'g'), () => String(args[i]))
   }
 
   return translation
@@ -33,6 +34,11 @@ export function newLocale(lang: string): LocaleType {
     return translate(lang, key, args)
   }
   return { lang, t }
+}
+
+/** Keys defined for a language. Used to keep the locale tables in sync. */
+export function getTranslationKeys(lang: string): string[] {
+  return Object.keys(translations[lang] ?? {})
 }
 
 /*
@@ -72,6 +78,7 @@ const translations: Translations = {
     'Product name must be at most 20 characters': 'Product name must be at most 20 characters',
     'Description must be at most 300 characters': 'Description must be at most 300 characters',
     'Price must be a non-negative number': 'Price must be a non-negative number',
+    'Price is too large': 'Price is too large',
     'Price must have at most 2 decimal places': 'Price must have at most 2 decimal places',
     'Could not create product': 'Could not create product',
     'Could not update product': 'Could not update product',
@@ -121,6 +128,7 @@ const translations: Translations = {
     'Product name must be at most 20 characters': 'El nombre del producto debe tener como máximo 20 caracteres',
     'Description must be at most 300 characters': 'La descripción debe tener como máximo 300 caracteres',
     'Price must be a non-negative number': 'El precio debe ser un número no negativo',
+    'Price is too large': 'El precio es demasiado alto',
     'Price must have at most 2 decimal places': 'El precio debe tener como máximo 2 decimales',
     'Could not create product': 'No se pudo crear el producto',
     'Could not update product': 'No se pudo actualizar el producto',
@@ -170,6 +178,7 @@ const translations: Translations = {
     'Product name must be at most 20 characters': 'Le nom du produit doit comporter au plus 20 caractères',
     'Description must be at most 300 characters': 'La description doit comporter au plus 300 caractères',
     'Price must be a non-negative number': 'Le prix doit être un nombre non négatif',
+    'Price is too large': 'Le prix est trop élevé',
     'Price must have at most 2 decimal places': 'Le prix doit comporter au plus 2 décimales',
     'Could not create product': 'Impossible de créer le produit',
     'Could not update product': 'Impossible de mettre à jour le produit',
@@ -219,6 +228,7 @@ const translations: Translations = {
     'Product name must be at most 20 characters': 'Produktname darf höchstens 20 Zeichen haben',
     'Description must be at most 300 characters': 'Beschreibung darf höchstens 300 Zeichen haben',
     'Price must be a non-negative number': 'Preis muss eine nicht-negative Zahl sein',
+    'Price is too large': 'Der Preis ist zu hoch',
     'Price must have at most 2 decimal places': 'Preis darf höchstens 2 Nachkommastellen haben',
     'Could not create product': 'Produkt konnte nicht erstellt werden',
     'Could not update product': 'Produkt konnte nicht aktualisiert werden',

@@ -10,6 +10,7 @@ import manifest from './generated/manifest'
 import type { AppEnv } from './types/env'
 import { getContentLanguage, getLang, LANG_COOKIE, setContentLanguage, STANDARD_LANGUAGE } from './i18n/lang'
 import { allowRequest } from './lib/security'
+import { DEV_FLASH_SECRET, requireSecret } from './lib/secrets'
 import { authController, csrfProtect, requireAuth } from './routes/auth'
 import products from './routes/products'
 
@@ -19,10 +20,32 @@ const viteOrigin = `http://localhost:${vitePort}`
 
 const base = new Hono<AppEnv>()
 
+// Security headers for every response the Worker produces (HTML, JSON, redirects
+// and dev static assets). Pages additionally get a per-request CSP below.
+base.use(async (c, next) => {
+  await next()
+  c.res.headers.set('X-Content-Type-Options', 'nosniff')
+  c.res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
+  c.res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+  if (!isDev) {
+    c.res.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
+  }
+})
+
 function staticServe(root: string) {
   return serveStatic({
     root,
     getContent: async (path: string, c: Context<AppEnv>) => {
+      // In development Vite serves `public/` from memory, so edits are visible
+      // without a rebuild. The ASSETS binding points at the last `dist/` build.
+      if (isDev) {
+        try {
+          const response = await fetch(viteOrigin + c.req.path)
+          if (response.ok) return response
+        } catch {
+          // Vite is not running; fall through to the built assets.
+        }
+      }
       if (typeof Bun !== 'undefined') {
         const file = Bun.file(path)
         return await file.exists() ? (file as Blob) : null
@@ -40,6 +63,8 @@ base.use('/images/*', staticServe('./public'))
 base.use('/manifest.webmanifest', staticServe('./public'))
 base.use('/privacy.html', staticServe('./public'))
 base.use('/terms.html', staticServe('./public'))
+base.get('/privacy', (c) => c.redirect('/privacy.html', 301))
+base.get('/terms', (c) => c.redirect('/terms.html', 301))
 
 if (!isDev) {
   base.use('/assets/*', staticServe('./dist'))
@@ -125,11 +150,17 @@ const viteHtmlRenderer = createViteHtmlRenderer({
   head: raw('<link rel="manifest" href="/manifest.webmanifest">\n<meta name="theme-color" content="#fddcd0">\n<link rel="apple-touch-icon" href="/images/icon-192.png">\n<meta name="description" content="Vue Inertia Demo">\n<link rel="stylesheet" href="/css/bootstrap3-un.css" />\n<link rel="stylesheet" href="/css/auth.css" />'),
 })
 
+// Inertia compares this version on every visit; changing it makes stale tabs
+// (old chunk hashes) do a full reload. In production derive it from the build
+// output so a deploy invalidates old clients; in development any stable value
+// works because Vite serves modules directly.
+const assetVersion = isDev ? 'dev' : (manifest['src/inertia/main.ts']?.file ?? '1')
+
 const { middleware } = createInertia({
-  version: '1',
+  version: assetVersion,
   // Signs the one-shot flash cookie (success messages after create/update/delete).
-  // Set INERTIA_FLASH_SECRET in production; the fallback is dev-only.
-  flashSecret: process.env.INERTIA_FLASH_SECRET ?? 'dev-insecure-flash-secret',
+  // In production the app refuses to start unless INERTIA_FLASH_SECRET is set.
+  flashSecret: requireSecret('INERTIA_FLASH_SECRET', DEV_FLASH_SECRET),
   share: (c) => ({
     locale: { lang: getContentLanguage(c) },
     authUser: c.get('authUser') ?? null,

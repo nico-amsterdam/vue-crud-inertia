@@ -32,7 +32,7 @@ const filteredProducts = computed(() => {
   return productList.value.filter(product =>
     product.productName.toLowerCase().indexOf(searchKey.value.toLowerCase()) !== -1
     || product.description.toLowerCase().indexOf(searchKey.value.toLowerCase()) !== -1
-    || (product.price && product.price.toString().indexOf(searchKey.value) !== -1))
+    || (product.price !== null && product.price.toString().includes(searchKey.value)))
 })
 
 let searchTimer: ReturnType<typeof setTimeout> | undefined

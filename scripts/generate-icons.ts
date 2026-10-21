@@ -1,5 +1,5 @@
-import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 
 /*
  * Prunes @iconify-json/tabler down to the icons referenced in src/ and writes
@@ -7,7 +7,7 @@ import { join } from 'node:path'
  * with addCollection() — keeping the CSP free of Iconify API origins while
  * avoiding a 2 MB full-collection bundle.
  *
- * Run automatically by `bun run build`; `tests/icons.test.ts` fails when a
+ * Run automatically by `bun run build`; `tests/scripts/icons.test.ts` fails when a
  * referenced icon is missing from the generated file (i.e. forgotten regen).
  */
 
@@ -81,5 +81,6 @@ const pruned = {
   ...(Object.keys(aliases).length > 0 && { aliases }),
 }
 
+mkdirSync(dirname(OUT_FILE), { recursive: true })
 writeFileSync(OUT_FILE, JSON.stringify(pruned, null, 2) + '\n')
 console.log(`Wrote ${OUT_FILE}: ${used.length} icon(s) — ${used.join(', ')}`)

@@ -43,6 +43,13 @@ describe('products route protection', () => {
     expect(res.headers.get('Location')).toContain('/auth/login')
   })
 
+  test('GET /products with X-Inertia gets a 409 location instead of a 307', async () => {
+    delete process.env.AUTH_DISABLED
+    const res = await app.request('/products', { headers: { 'X-Inertia': 'true' } })
+    expect(res.status).toBe(409)
+    expect(res.headers.get('X-Inertia-Location')).toBe('/auth/login')
+  })
+
   test('POST /products without the x-csrf-token header is rejected', async () => {
     process.env.AUTH_DISABLED = '1'
     const res = await app.request('/products', {
@@ -70,5 +77,21 @@ describe('products route protection', () => {
     const res = await app.request('/products/1', { method: 'DELETE' })
     expect(res.status).toBe(403)
     expect(await res.text()).toContain('Invalid CSRF token')
+  })
+})
+
+describe('security headers', () => {
+  test('HTML pages get a nonce-based CSP and baseline headers', async () => {
+    process.env.AUTH_DISABLED = '1'
+    const res = await app.request('/products/new')
+    expect(res.status).toBe(200)
+    expect(res.headers.get('Content-Security-Policy')).toContain("default-src 'self'")
+    expect(res.headers.get('Content-Security-Policy')).toContain('script-src')
+    expect(res.headers.get('Cache-Control')).toBe('no-store')
+    expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff')
+    expect(res.headers.get('Referrer-Policy')).toBe('strict-origin-when-cross-origin')
+    expect(res.headers.get('Permissions-Policy')).toContain('camera=()')
+    // HSTS is production-only.
+    expect(res.headers.get('Strict-Transport-Security')).toBeNull()
   })
 })

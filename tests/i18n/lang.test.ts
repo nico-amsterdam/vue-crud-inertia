@@ -60,6 +60,16 @@ describe('getLang', () => {
     expect(getLang({ 'accept-language': 'zh-CN,ja-JP' }, {})).toBe('en')
   })
 
+  it('should scan every accept-language entry, not only the first', () => {
+    expect(getLang({ 'accept-language': 'zh-CN,de;q=0.9,en;q=0.8' }, {})).toBe('de')
+    expect(getLang({ 'accept-language': 'ja-JP,fr-CA;q=0.9' }, {})).toBe('fr')
+  })
+
+  it('should normalize regional query and cookie values', () => {
+    expect(getLang({}, { lang: 'de-DE' })).toBe('de')
+    expect(getLang({}, {}, 'fr-CA')).toBe('fr')
+  })
+
   it('should return English for unsupported query language', () => {
     expect(getLang({}, { lang: 'zh' })).toBe('en')
   })
