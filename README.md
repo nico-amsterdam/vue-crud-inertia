@@ -42,6 +42,8 @@
 
 Rebuild of this [Vue CRUD Nuxt application](https://github.com/nico-amsterdam/vue-crud-nuxt) with [Inertia](https://inertiajs.com/), [Vue 3](https://vuejs.org/), [Hono](https://hono.dev/) and [Bun](https://bun.com/), with the option to deploy it on Cloudflare, so everything can run on the edge in the cloud.
 
+There is a demo on https://vue-inertia-crud.nico-amsterdam.workers.dev/. Login with your Google or GitHub account.
+
 The server-side rendered sibling of this project is [bun-htmx-crud](https://github.com/nico-amsterdam/bun-htmx-crud) (HTMX + Elysia). This project keeps the same features and security model, but with a Vue 3 client. Advantages of this project are the Vue ecosystem, and it is also easier to add custom (reactive) client-side code.
 
 Inertia sits between the router and the frontend: the server stays in charge of routes and data, and ships page props to Vue components. You get single-page app navigation without building and maintaining a separate JSON API.
