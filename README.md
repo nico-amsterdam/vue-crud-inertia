@@ -209,6 +209,7 @@ Open the shown link by the deploy:app command in your browser to see the result.
 | `bun test` | Run tests |
 | `bun test --coverage` | Print out a test coverage report to the console |
 | `bun test --watch` | Watch changes and re-run tests |
+| `bun e2e` | Run end-to-end tests. First start `bun dev` with `AUTH_DISABLED="1"` in the .env file |
 | `bun dev` | Build once, then start local dev servers with hot reload (Vite + wrangler) |
 | `bun preview` | Build and run the production bundle locally with wrangler |
 | `bun deploy:app` | Deploy application to Cloudflare Workers |
