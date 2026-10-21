@@ -59,7 +59,7 @@ It is great for most CRUD applications. There are a few limitations; D1 has a ma
 
 ```text
 ├── e2e/                   # Playwright end-to-end tests
-├── migrations/            # database migrations (generated)
+├── migrations/            # database migrations (generated per deployment, not committed here)
 ├── public/                # public assets
 │   ├── css/               # stylesheets
 │   ├── images/            # images
@@ -104,6 +104,7 @@ cd vue-crud-inertia
 bun install
 cp .env.example .env
 cp wrangler.jsonc.example wrangler.jsonc
+bun migrate:create
 bun migrate:dev
 bun update:types
 ```
@@ -112,7 +113,10 @@ bun update:types
 pruned icon set in `src/generated/`. If those files are missing (for example after deleting
 `src/generated/`), run `bun generate` before `bun test` or `bun typecheck`.
 
-After changing `src/db/schema.ts`, run `bun migrate:create` and commit the generated files.
+`bun migrate:create` generates your initial migration from `src/db/schema.ts`.
+`bun migrate:dev` applies it to the local database. 
+Commit both `migrations/` and your `wrangler.jsonc` in your own repository. 
+After changing `src/db/schema.ts`, run `bun migrate:create` again and commit the generated migration.
 
 ## Setup Google and GitHub authentication
 
@@ -171,17 +175,18 @@ bun wrangler login   # login on your Cloudflare account
 bun create:db        # interactive: use DB as binding
 ```
 
-Set DB_ID in the .env file. The value can be found in `wrangler.jsonc` as the database_id.
+Copy the database_id from the `bun create:db` output into the `database_id` field of
+your `wrangler.jsonc`, and set `DB_ID` in the .env file to the same value.
 
 Remove old bindings from wrangler.jsonc, such that only one DB binding remains.
 
 ```bash
 bun migrate
-bun deploy:app
 bun secret:google
 bun secret:github
 bun secret:session
 bun secret:flash
+bun deploy:app
 ```
 
 Open the shown link by the deploy:app command in your browser to see the result.

@@ -115,8 +115,8 @@ Full table in [README.md](README.md).
 
 ## Using this template
 
-1. Clone, `bun install` (runs `prepare` and generates `src/generated/*`), `cp .env.example .env`, `cp wrangler.jsonc.example wrangler.jsonc`, `bun migrate:dev`, `bun update:types`
-2. Set OAuth client ids in `wrangler.jsonc` vars; set secrets with `bun secret:google` / `bun secret:github`
+1. Clone, `bun install` (runs `prepare` and generates `src/generated/*`), `cp .env.example .env`, `cp wrangler.jsonc.example wrangler.jsonc`, `bun migrate:create` (generates your own migrations — the repository ships none), `bun migrate:dev`, `bun update:types`
+2. Commit your `migrations/` and `wrangler.jsonc` in your own repository; never commit database ids, migration history or secrets to the upstream template. Set OAuth client ids in `wrangler.jsonc` vars; set secrets with `bun secret:google` / `bun secret:github`
 3. Set `SESSION_SECRET` and `INERTIA_FLASH_SECRET` as Worker secrets with `bun secret:session` / `bun secret:flash` (≥32 random characters; local dev has fallbacks, production fails fast)
 4. Replace the products feature (routes, pages, schema) with your domain
 5. Add icons with `<Icon icon="tabler:…" />`; `bun generate:icons` keeps the pruned collection in sync
