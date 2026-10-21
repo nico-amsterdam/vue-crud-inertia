@@ -57,14 +57,16 @@ watch(darkmode, (value) => {
         <h1>Vue CRUD Inertia</h1>
         <span class="color-scheme">
           <LanguageSwitcher />
+          <button v-if="!darkmode" type="button" class="dark-mode-toggle" :title="t('Toggle dark mode')" @click="toggleDark">
+            <Icon aria-hidden="true" icon="tabler:sun" width="1.5em" class="sun" />
+          </button>
+          <button v-if="darkmode" type="button" class="dark-mode-toggle" :title="t('Toggle dark mode')" @click="toggleDark">
+            <Icon aria-hidden="true" icon="tabler:moon" width="1.5em" class="moon" />
+          </button>
           <span v-if="authUser" class="user">
             <img v-if="authUser.avatar_url" :src="authUser.avatar_url" alt="" class="user-avatar" :title="(authUser.name || t('Avatar'))" />
             <a href="/auth/login" class="btn btn-default logout">➜] {{ t('Log out') }}</a>
           </span>
-          <Icon v-if="!darkmode" aria-hidden="false" role="button" icon="tabler:sun" width="1.5em" :title="t('Toggle dark mode')" class="sun"
-            @click="toggleDark" />
-          <Icon v-if="darkmode" aria-hidden="false" role="button" icon="tabler:moon" width="1.5em" :title="t('Toggle dark mode')" class="moon"
-            @click="toggleDark" />
         </span>
       </div>
     </header>
@@ -125,6 +127,13 @@ watch(darkmode, (value) => {
 
 .logout {
   margin-left: 5px
+}
+
+.dark-mode-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  vertical-align: middle;
 }
 
 .page-header h1 {
