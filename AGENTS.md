@@ -7,7 +7,7 @@ For the wireframe, full script table, deploy walkthrough and OAuth provider setu
 ## Stack
 
 - **Server**: [Hono](https://hono.dev/) on Cloudflare Workers (Bun for tooling)
-- **Client**: [Inertia.js](https://inertiajs.com/) (`@inertiajs/vue3` v3) + Vue 3 + Vite
+- **Client**: [Inertia](https://inertiajs.com/) (`@inertiajs/vue3` v3) + Vue 3 + Vite
 - **Database**: Cloudflare D1 (SQLite) with Drizzle ORM, injected via TypeDI (`Container.set('DrizzleDB', …)` in `src/index.ts`, read with `getDB()` in `src/db/index.ts`)
 - **Auth**: OAuth2 (Google/GitHub) with signed session cookies, double-submit CSRF
 - **Tests**: Bun test runner (`tests/`)
@@ -25,7 +25,7 @@ Middleware runs in this order; keep new cross-cutting middleware in the right sl
 5. Inertia adapter (`@sneakylenny/inertia-hono`): `share()` exposes `locale`, `authUser`, `csrfToken`; `flashSecret` signs one-shot flash cookies
 6. Routes: `/auth` (public), then `.use('/products/*', requireAuth, csrfProtect)` → `.route('/products', products)`
 
-**Critical Hono gotcha**: `.use('/products', mw)` matches only the *exact* path `/products`. Subpaths (`/products/new`, `/products/:id`, …) skip the middleware. Always mount route protection with a trailing `/*`: `.use('/products/*', requireAuth, csrfProtect)`. `tests/auth.test.ts` guards this.
+**Critical Hono gotcha**: `.use('/products', mw)` matches only the *exact* path `/products`. Subpaths (`/products/new`, `/products/:id`, …) skip the middleware. Always mount route protection with a trailing `/*`: `.use('/products/*', requireAuth, csrfProtect)`. `tests/routes/auth/auth.test.ts` guards this.
 
 ### Adding a feature
 
@@ -76,7 +76,7 @@ Protocol notes:
 
 - Vue components import `Icon` from `@iconify/vue/offline` (the API client is excluded; CSP blocks the Iconify API)
 - `src/generated/tabler-icons.json` is a pruned collection. To use a new icon: add its name to the list in `scripts/generate-icons.ts`, run `bun generate:icons` (the build runs it automatically), then use `<Icon icon="tabler:…" />`
-- `tests/icons.test.ts` fails if the collection and source drift apart
+- `tests/scripts/icons.test.ts` fails if the collection and source drift apart
 
 ## Commands
 
@@ -105,9 +105,9 @@ Full table in [README.md](README.md).
 
 ## Testing
 
-- `tests/auth.test.ts`: route protection (login redirects, CSRF 403s on POST/PATCH/DELETE subpaths) via `app.request(...)`
-- `tests/icons.test.ts`: icon collection drift
-- `tests/rate-limit.test.ts`, `tests/i18n/`: middleware and translations
+- `tests/routes/auth/auth.test.ts`: route protection (login redirects, CSRF 403s on POST/PATCH/DELETE subpaths) via `app.request(...)`
+- `tests/scripts/icons.test.ts`: icon collection drift
+- `tests/middleware/rate-limit.test.ts`, `tests/i18n/`: middleware and translations
 - Tests import the real `src/server` Hono app; they never touch the network or D1 (handlers that need the DB are not reached in these tests)
 
 ## Using this template

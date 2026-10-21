@@ -53,7 +53,7 @@ watch(darkmode, (value) => {
   </div>
 </template>
 
-<style>
+<style scoped>
 /* Skip link for accessibility - WCAG 2.4.1 Bypass Blocks. Lives here because
    the <a class="skip-link"> element is part of this layout. The id selector
    beats `.retro a { background-color: transparent }` from bootstrap. */
@@ -97,10 +97,6 @@ watch(darkmode, (value) => {
 
 .logout {
   margin-left: 5px
-}
-
-.exit-run {
-  margin-right: 10px
 }
 
 .page-header h1 {

@@ -19,6 +19,7 @@
     "migrate:create": "drizzle-kit generate",
     "migrate:dev": "wrangler d1 migrations apply inertia-crud --local",
     "migrate": "wrangler d1 migrations apply inertia-crud --remote",
+    "e2e": "bun run e2e/products.ts",
     "test:db:dev": "wrangler d1 execute inertia-crud --local --command \"select * from products\";",
     "test:db": "wrangler d1 execute inertia-crud --remote --command \"select * from products\";",
     "secret:github": "wrangler secret put GITHUB_CLIENT_SECRET",

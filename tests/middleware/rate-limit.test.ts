@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'bun:test'
 import { Hono } from 'hono'
-import { rateLimit } from '../src/middleware/rate-limit'
+import { rateLimit } from '../../src/middleware/rate-limit'
 
 function makeApp(max: number, keyPrefix: string) {
   return new Hono().use(rateLimit({ windowMs: 60_000, max, keyPrefix })).get('/x', (c) => c.text('ok'))

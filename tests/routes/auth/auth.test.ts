@@ -7,11 +7,11 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 const originalAuthDisabled = process.env.AUTH_DISABLED
 const originalNodeEnv = process.env.NODE_ENV
 
-let app: (typeof import('../src/server'))['app']
+let app: (typeof import('../../../src/server'))['app']
 
 beforeAll(async () => {
   process.env.NODE_ENV = 'test'
-  ;({ app } = await import('../src/server'))
+  ;({ app } = await import('../../../src/server'))
 })
 
 afterAll(() => {

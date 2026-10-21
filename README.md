@@ -4,9 +4,10 @@
 
 - ⛅ **Cloud**: Deploy to Cloudflare without any hassle
 - 🔐 **Authentication**: Login with Google or GitHub. Easy setup instructions
-- ⚡ **Inertia.js**: Server-driven pages with smooth client-side navigation, no JSON API needed
+- ⚡ **Inertia**: Server-driven pages with smooth client-side navigation
 - ✨ **Modern user interface**: Vue 3 single-page app served by the Hono backend
-- 🧩 **Lightweight web framework**: Hono features type-safe routing, middleware, and an RPC client
+- 🧩 **Lightweight web framework**: Hono is tiny, has built-in middleware and clean APIs
+- ↻  **Live reload**: Changes in the code are immediatly visible in the browser during development
 - 💾 **Database**: Drizzle ORM with SQLite
 - 🔄 **Migrations**: Database migration system
 - ✅ **Testing**: 40+ unit tests. Run by Bun's speedy test runner
@@ -39,7 +40,7 @@
 
 ## About this project
 
-Rebuild of this [Vue CRUD Nuxt application](https://github.com/nico-amsterdam/vue-crud-nuxt) with [Inertia.js](https://inertiajs.com/), [Vue 3](https://vuejs.org/), [Hono](https://hono.dev/) and [Bun](https://bun.com/), with the option to deploy it on Cloudflare, so everything can run on the edge in the cloud.
+Rebuild of this [Vue CRUD Nuxt application](https://github.com/nico-amsterdam/vue-crud-nuxt) with [Inertia](https://inertiajs.com/), [Vue 3](https://vuejs.org/), [Hono](https://hono.dev/) and [Bun](https://bun.com/), with the option to deploy it on Cloudflare, so everything can run on the edge in the cloud.
 
 The server-side rendered sibling of this project is [bun-htmx-crud](https://github.com/nico-amsterdam/bun-htmx-crud) (HTMX + Elysia). This project keeps the same features and security model, but with a Vue 3 client.
 
@@ -52,38 +53,35 @@ It is great for most CRUD applications. There are a few limitations; D1 has a ma
 
 Inertia sits between the router and the frontend: the server stays in charge of routes and data, and ships page props to Vue components. You get single-page app navigation without building and maintaining a separate JSON API.
 
-Recommended Inertia reading material: [The Protocol](https://inertiajs.com/the-protocol)
-
 ## Directory structure
 
 ```text
-├── migrations/        # database migrations (generated)
-├── public/            # public assets
-│   ├── css/           # stylesheets
-│   ├── images/        # images
-│   ├── manifest.webmanifest
-│   ├── privacy.html   # also served at /privacy
-│   └── terms.html     # also served at /terms
-├── scripts/           # code generators (icons, PWA manifest)
-│
-├── src/               # server-side code
-│   ├── db/            # database schema and client
-│   ├── generated/     # generated files (manifest, pruned icon set)
-│   ├── i18n/          # internationalization
-│   ├── inertia/       # client-side Vue application
-│   │   ├── components/
-│   │   ├── composables/
-│   │   ├── layouts/
-│   │   └── pages/     # Inertia page components (products/*)
-│   ├── lib/           # security and url helpers
-│   ├── middleware/    # rate limiting
-│   ├── routes/
-│   │   ├── auth/      # OAuth authentication (Google/GitHub), session, CSRF
-│   │   └── products/  # Example CRUD feature (replace with your domain)
-│   ├── types/
-│   └── server.ts      # Hono app: middleware, CSP, Inertia share
-│
-└── tests/             # subfolders in tests follow the src/ structure
+├── e2e/                   # Playwright end-to-end tests
+├── migrations/            # database migrations (generated)
+├── public/                # public assets
+│   ├── css/               # stylesheets
+│   ├── images/            # images
+│   ├── privacy.html       # also served at /privacy
+│   └── terms.html         # also served at /terms
+├── scripts/               # code generators (icons, PWA manifest)
+├── src/                   # source code
+│   ├── db/                # database schema and client
+│   ├── generated/         # generated files (manifest, pruned icon set)
+│   ├── i18n/              # internationalization
+│   ├── inertia/           # client-side Vue application
+│   │   ├── components/    # reusable Vue components
+│   │   ├── composables/   # reusable functions
+│   │   ├── layouts/       # top section of the Vue pages used in main.ts
+│   │   └── pages/         # Inertia page components
+│   │       └── products/  # example CRUD feature (replace with your domain)
+│   ├── lib/               # security and url helpers
+│   ├── middleware/        # middleware like for example rate limiting
+│   ├── routes/            # server-side routes
+│   │   ├── auth/          # OAuth authentication (Google/GitHub), session, CSRF
+│   │   └── products/      # example CRUD feature (replace with your domain)
+│   ├── types/             # TypeScript types
+│   └── server.ts          # Hono app: middleware, Content Security Policy, Inertia share
+└── tests/                 # subfolders in tests follow the src/ structure
 ```
 
 ## Getting Started
