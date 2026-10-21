@@ -16,7 +16,7 @@
 - 🕶 **Accessible**: Follows WCAG and WAI-ARIA standards for accessibility
 - 🌐 **Internationalization**: Switch between English, German, Spanish and French
 - 🎨 **Self-hosted icons**: Iconify (tabler) icons pruned and bundled — no CDN needed
-- 🛡️ **Security**: Content security policy with nonces, signed cookies, fetch metadata checks, CSRF tokens, rate limiting
+- 🛡️ **Security**: Content security policy with nonces, signed cookies, fetch metadata checks, CSRF, rate limiting
 - 🚀 **Ready to launch**: Skip the scaffolding. Get straight to implementing your business ideas
 
 ## Wireframe
