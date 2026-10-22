@@ -4,6 +4,7 @@
 
 - ⛅ **Cloud**: Deploy to Cloudflare without any hassle
 - 🔐 **Authentication**: Login with Google or GitHub. Easy setup instructions
+- 🤖 **AI agent instructions**: AGENTS.md for the AI coding agent
 - ⚡ **Inertia**: Server-driven pages with smooth client-side navigation
 - ✨ **Modern user interface**: Vue 3 single-page app served by the Hono backend
 - 🧩 **Lightweight web framework**: Hono is tiny, has built-in middleware and clean APIs
