@@ -1,14 +1,15 @@
 <script setup lang="ts">
-import { useLocale, useT } from '../composables/useLocale'
+import { setLocale, useLocale, useT } from '../composables/useLocale'
 
 const locale = useLocale()
 const t = useT()
 
+// Client-side switch: all translations ship with the bundle, so this needs no
+// page reload. `setLocale` stores the choice in the `lang` cookie (the same
+// one the server middleware would write), so the language also survives
+// visits that drop the query parameter and subsequent full page loads.
 function switchLanguage(event: Event) {
-  const lang = (event.target as HTMLSelectElement).value
-  // Full page load: the server stores the choice in the `lang` cookie,
-  // so the language also survives visits that drop the query parameter.
-  window.location.href = `${window.location.pathname}?lang=${lang}`
+  setLocale((event.target as HTMLSelectElement).value)
 }
 </script>
 

@@ -48,7 +48,7 @@ Protocol notes:
 
 - Page props arrive in `<script data-page="app" type="application/json">` (not a div attribute)
 - Mutating requests must send header `x-csrf-token` = `page.props.csrfToken`; the server compares it to the token in the signed session (`csrfProtect` in `src/routes/auth/index.ts`)
-- A `303` after a mutation is **not** a full page load: the XHR client follows it in the background and the final `GET` swaps the page in-app — but the page component remounts (`edit` → `index`), so page-local state is lost. Real full page loads only happen for plain `<a>` tags (logout), `window.location` writes (LanguageSwitcher), and `409` + `x-inertia-location` (the adapter's `external()`/`location()`)
+- A `303` after a mutation is **not** a full page load: the XHR client follows it in the background and the final `GET` swaps the page in-app — but the page component remounts (`edit` → `index`), so page-local state is lost. Real full page loads only happen for plain `<a>` tags (logout), and `409` + `x-inertia-location` (the adapter's `external()`/`location()`). Language changes never reload: all translations ship with the bundle, so `setLocale` in `src/inertia/composables/useLocale.ts` switches client-side, mirrors the server's `lang` cookie, and clears displayed validation errors (those are server-translated, so they would stay in the old language)
 - "Load more" on the product list is `<InfiniteScroll>` (from `@inertiajs/vue3`) with header `x-inertia-infinite-scroll-merge-intent` (`isLoadMoreRequest` in `src/routes/products/index.ts`)
 
 ## Auth & CSRF
