@@ -6,6 +6,7 @@ import type { ProductBaseType, ProductType } from '../../types/product'
 import type { AppEnv } from '../../types/env'
 import { t } from '../../i18n/request'
 import { rateLimit } from '../../middleware/rate-limit'
+import { renderNotFound } from '../errors'
 import {
   DEFAULT_USER,
   getProductById,
@@ -132,19 +133,19 @@ const app = new Hono<AppEnv>()
   .get('/:id/edit', async (c) => {
     const id = readId(c)
     const dbProduct = id === null ? undefined : await getProductById(id)
-    if (!dbProduct) return c.notFound()
+    if (!dbProduct) return renderNotFound(c)
     const product = toProduct(dbProduct)
     return render(c, 'products/edit', { product })
   })
   .patch('/:id', async (c) => {
     const id = readId(c)
-    if (id === null) return c.notFound()
+    if (id === null) return renderNotFound(c)
 
     const body = await readJsonBody(c)
     if (body === null) {
       // No usable body: re-render the form with the stored product and an error.
       const dbProduct = await getProductById(id)
-      if (!dbProduct) return c.notFound()
+      if (!dbProduct) return renderNotFound(c)
       return render(c, 'products/edit', {
         product: toProduct(dbProduct),
         errors: { write: t(c, 'Invalid request body') },
@@ -204,7 +205,7 @@ const app = new Hono<AppEnv>()
   .get('/:id/delete', async (c) => {
     const id = readId(c)
     const dbProduct = id === null ? undefined : await getProductById(id)
-    if (!dbProduct) return c.notFound()
+    if (!dbProduct) return renderNotFound(c)
     const product = toProduct(dbProduct)
     return render(c, 'products/delete', { product })
   })

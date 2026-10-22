@@ -13,6 +13,7 @@ import { allowRequest } from './lib/security'
 import { DEV_FLASH_SECRET, requireSecret } from './lib/secrets'
 import { authController, csrfProtect, requireAuth } from './routes/auth'
 import products from './routes/products'
+import { errorPage, renderNotFound } from './routes/errors'
 
 const isDev = process.env.NODE_ENV !== 'production'
 const vitePort = Number(process.env.VITE_PORT ?? 5173)
@@ -189,5 +190,17 @@ export const app = base
   // '.use("/products", ...)' matches the exact path only.
   .use('/products/*', requireAuth, csrfProtect)
   .route('/products', products)
+
+/*
+ * Friendly error pages instead of Hono's plain "404 Not Found" and unstyled
+ * 500s: `renderNotFound` covers every path without a route, `onError` covers
+ * unexpected failures (detailed in the log, never shown to users). Both go
+ * through `errorPage` — see src/routes/errors.ts for the rendering rules.
+ */
+app.notFound(renderNotFound)
+app.onError(async (error, c) => {
+  console.error(`Unhandled error on ${c.req.method} ${c.req.path}:`, error)
+  return errorPage(c, 'errors/internalerror', 500)
+})
 
 export type AppType = typeof app

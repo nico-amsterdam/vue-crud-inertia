@@ -10,7 +10,7 @@
 - ↻  **Live reload**: Changes in the code are immediately visible in the browser during development
 - 💾 **Database**: Drizzle ORM with SQLite
 - 🔄 **Migrations**: Database migration system
-- ✅ **Testing**: 60+ unit tests. Run by Bun's speedy test runner
+- ✅ **Testing**: 70+ unit tests. Run by Bun's speedy test runner
 - 🧠 **Type Safety**: Full TypeScript support. Enables IDE intelliSense and real-time error checking
 - ☎  **Mobile compatible**: Responsive web design. Manifest enables 'Add to Home Screen'
 - 🕶 **Accessible**: Follows WCAG and WAI-ARIA standards for accessibility
