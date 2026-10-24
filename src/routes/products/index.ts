@@ -1,4 +1,5 @@
-import { Hono, type Context } from 'hono'
+import { Hono } from 'hono'
+import type { Context } from 'hono'
 import { render, scroll } from '@sneakylenny/inertia-hono'
 import { and, eq, isNull } from 'drizzle-orm'
 import { getDB, tables } from '../../db/index'

@@ -1,13 +1,23 @@
-import { Hono, type Context, type MiddlewareHandler } from 'hono'
+import { Hono } from 'hono'
+import type { Context, MiddlewareHandler } from 'hono'
 import { isInertiaRequest, location } from '@sneakylenny/inertia-hono'
 import { getContentLanguage, STANDARD_LANGUAGE } from '../../i18n/lang'
 import { t } from '../../i18n/request'
 import type { AppEnv } from '../../types/env'
 import { githubController } from './github'
 import { googleController } from './google'
-import { LOGIN_PATH, clearSession, readSession, type UserType } from './common'
+import { LOGIN_PATH, clearSession, readSession } from './common'
+import type { UserType } from './common'
 
-export { LOGIN_PATH, type UserType } from './common'
+/*
+ * Types
+ */
+export type { UserType }
+
+/*
+ * Variables
+ */
+export { LOGIN_PATH }
 
 /*
  * Login page (server-rendered, no Inertia/Vue needed before login)

@@ -1,4 +1,5 @@
-import { Hono, type Context } from 'hono'
+import { Hono } from 'hono'
+import type { Context } from 'hono'
 import { serveStatic } from 'hono/serve-static'
 import { raw } from 'hono/html'
 import { getCookie, setCookie } from 'hono/cookie'
@@ -79,13 +80,14 @@ if (!isDev) {
  * needs no nonce. HTML responses are marked `no-store`: a cached nonce would
  * be stale and shared between visitors.
  */
-function buildCsp(nonce: string): string {
+function buildCsp(c: Context<AppEnv>, nonce: string): string {
+  const honoPort = new URL(c.req.url).port
   const externalImages = "https://avatars.githubusercontent.com https://*.googleusercontent.com";
   const directives = [
     "default-src 'self'",
     // Vite serves the modules (and the HMR websocket) from its own origin in dev.
     isDev
-      ? `script-src 'self' ${viteOrigin}`
+      ? `script-src 'self' ${viteOrigin} http://localhost:${honoPort}`
       : `script-src 'nonce-${nonce}' 'strict-dynamic' 'self' 'unsafe-inline'`,
     // 'unsafe-inline' for style attributes (Vue/Iconify); compiled styles are external.
     "style-src 'self' 'unsafe-inline'",
@@ -109,7 +111,7 @@ base.use(async (c, next) => {
 
   const html = await c.res.text()
   const headers = new Headers(c.res.headers)
-  headers.set('Content-Security-Policy', buildCsp(nonce))
+  headers.set('Content-Security-Policy', buildCsp(c, nonce))
   headers.set('Cache-Control', 'no-store')
   c.res = new Response(
     html.replace(/<script type="module"/g, `<script type="module" nonce="${nonce}"`),

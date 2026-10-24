@@ -1,4 +1,5 @@
-import { createHmac, createSecretKey, getRandomValues, type KeyObject } from 'crypto'
+import { createHmac, createSecretKey, getRandomValues } from 'crypto'
+import type { KeyObject } from 'crypto'
 
 /*
  * Functions
