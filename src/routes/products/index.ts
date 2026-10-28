@@ -1,8 +1,6 @@
 import { Hono } from 'hono'
 import type { Context } from 'hono'
 import { render, scroll } from '@sneakylenny/inertia-hono'
-import { and, eq, isNull } from 'drizzle-orm'
-import { getDB, tables } from '../../db/index'
 import type { ProductBaseType, ProductType } from '../../types/product'
 import type { AppEnv } from '../../types/env'
 import { t } from '../../i18n/request'
@@ -10,12 +8,14 @@ import { rateLimit } from '../../middleware/rate-limit'
 import { renderNotFound } from '../errors'
 import {
   DEFAULT_USER,
+  createProduct,
+  deleteProduct,
   getProductById,
   loadProductsPage,
   namePrefixPattern,
-  priceToCents,
   productNameExists,
   toProduct,
+  updateProduct,
 } from './store'
 import { MAX_NAME_LENGTH, translateFieldErrors, validateProduct } from './validation'
 
@@ -119,12 +119,8 @@ const app = new Hono<AppEnv>()
     }
 
     try {
-      await getDB().insert(tables.products).values({
-        name: result.data.productName,
-        description: result.data.description,
-        price: priceToCents(result.data.price),
-        createdBy: c.var.authUser?.login ?? DEFAULT_USER,
-      })
+      const created = await createProduct(result.data, c.var.authUser?.login ?? DEFAULT_USER)
+      if (!created) return render(c, 'products/new', { errors: { write: t(c, 'Could not create product') } })
       await flashSuccess(c, t(c, 'Product created successfully'))
       return c.redirect('/products', 303)
     } catch {
@@ -153,7 +149,12 @@ const app = new Hono<AppEnv>()
       })
     }
 
-    const staleProduct: ProductType = {
+    // The values the user just submitted (not the DB row): on a validation or
+    // duplicate-name failure we re-render the form with their input preserved
+    // instead of clobbering it with the stored (possibly concurrently changed)
+    // product. Unlike validateProduct().data, this keeps the original
+    // modifiedAt token so the optimistic-concurrency check survives the round trip.
+    const submittedProduct: ProductType = {
       id,
       productName: typeof body.productName === 'string' ? body.productName : '',
       description: typeof body.description === 'string' ? body.description : '',
@@ -163,11 +164,11 @@ const app = new Hono<AppEnv>()
 
     const result = validateProduct(body)
     if (!result.valid) {
-      return render(c, 'products/edit', { product: staleProduct, errors: translateFieldErrors(c, result.errors) })
+      return render(c, 'products/edit', { product: submittedProduct, errors: translateFieldErrors(c, result.errors) })
     }
 
     if (await productNameExists(result.data.productName, id)) {
-      return render(c, 'products/edit', { product: staleProduct, errors: { productName: t(c, 'A product with this name already exists') } })
+      return render(c, 'products/edit', { product: submittedProduct, errors: { productName: t(c, 'A product with this name already exists') } })
     }
 
     // Optimistic concurrency: only update if the product was not changed or removed since it was opened.
@@ -175,32 +176,22 @@ const app = new Hono<AppEnv>()
     const verifyModifiedAt = !modifiedAt ? null : new Date(modifiedAt)
 
     try {
-      const updatedProductIds: { updatedId: number }[] = await getDB()
-        .update(tables.products)
-        .set({
-          name: result.data.productName,
-          description: result.data.description,
-          price: priceToCents(result.data.price),
-          modifiedBy: c.var.authUser?.login ?? DEFAULT_USER,
-          modifiedAt: new Date(),
-        })
-        .where(and(
-          eq(tables.products.id, id),
-          verifyModifiedAt === null
-            ? isNull(tables.products.modifiedAt)
-            : eq(tables.products.modifiedAt, verifyModifiedAt),
-        ))
-        .returning({ updatedId: tables.products.id })
+      const updatedProducts = await updateProduct(
+        id,
+        result.data,
+        c.var.authUser?.login ?? DEFAULT_USER,
+        verifyModifiedAt ?? null,
+      )
 
-      if (updatedProductIds.length === 0) {
+      if (updatedProducts.length === 0) {
         const message = t(c, "'{0}' is changed or removed by another user. Reopen it from the list.", result.data.productName)
-        return render(c, 'products/edit', { product: staleProduct, errors: { write: message } })
+        return render(c, 'products/edit', { product: submittedProduct, errors: { write: message } })
       }
 
       await flashSuccess(c, t(c, 'Product updated successfully'))
       return c.redirect('/products', 303)
     } catch {
-      return render(c, 'products/edit', { product: staleProduct, errors: { write: t(c, 'Could not update product') } })
+      return render(c, 'products/edit', { product: submittedProduct, errors: { write: t(c, 'Could not update product') } })
     }
   })
   .get('/:id/delete', async (c) => {
@@ -214,7 +205,7 @@ const app = new Hono<AppEnv>()
     const id = readId(c)
     // Deleting a product that is already gone (or an invalid id) is treated as success.
     if (id !== null) {
-      await getDB().delete(tables.products).where(eq(tables.products.id, id))
+      await deleteProduct(id)
     }
     await flashSuccess(c, t(c, 'Product deleted successfully'))
     return c.redirect('/products', 303)

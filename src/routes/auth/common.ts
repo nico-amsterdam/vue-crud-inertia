@@ -82,7 +82,17 @@ export async function writeSession(c: Context, session: SessionCookieType): Prom
   })
 }
 
-export function clearSession(c: Context): void {
+export async function clearSession(c: Context): Promise<void> {
+  try {
+    const value = await getSignedCookie(c, SESSION_SECRET, SESSION_COOKIE)
+    if (typeof value === 'string') {
+      const session = JSON.parse(value) as SessionCookieType
+      // delete pairing relation
+      const { getDB, tables } = await import('../../db/index')
+      const { eq } = await import('drizzle-orm')
+      await getDB().delete(tables.pairingCodes).where(eq(tables.pairingCodes.code, session.id))
+    }
+  } catch {}
   deleteCookie(c, SESSION_COOKIE, { path: '/' })
 }
 

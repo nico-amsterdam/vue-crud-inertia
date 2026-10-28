@@ -1,0 +1,85 @@
+#!/usr/bin/env bun
+import { existsSync, readFileSync, writeFileSync, unlinkSync } from 'node:fs'
+import { join } from 'node:path'
+
+const DEFAULT_BASE_URL = 'http://localhost:8787'
+const SESSION_FILE = join(process.cwd(), '.agent-session.json')
+
+type Session = { pairingCode?: string; baseUrl?: string }
+
+function loadSession(): Session {
+  if (!existsSync(SESSION_FILE)) return {}
+  try { return JSON.parse(readFileSync(SESSION_FILE, 'utf8')) } catch { return {} }
+}
+function saveSession(s: Session) { writeFileSync(SESSION_FILE, JSON.stringify(s, null, 2)) }
+function clearSession() { if (existsSync(SESSION_FILE)) unlinkSync(SESSION_FILE) }
+
+/** Base URL: session file (--base-url of login), AGENT_BASE_URL env, or localhost:8787. */
+function baseUrl(): string {
+  return loadSession().baseUrl ?? process.env.AGENT_BASE_URL ?? DEFAULT_BASE_URL
+}
+
+function headers(): Record<string, string> {
+  const s = loadSession()
+  return {
+    'Content-Type': 'application/json',
+    'X-Pairing-Code': s.pairingCode ?? '',
+  }
+}
+
+async function req(method: string, path: string, body?: any) {
+  const res = await fetch(new URL(path, baseUrl()).toString(), { method, headers: headers(), body: body ? JSON.stringify(body) : undefined })
+  const text = await res.text()
+  let data: any = text
+  try { data = JSON.parse(text) } catch {}
+  if (!res.ok) { console.error(res.status, data); process.exit(1) }
+  console.log(JSON.stringify(data, null, 2))
+}
+
+const [cmd, ...args] = process.argv.slice(2)
+
+switch (cmd) {
+  case 'login': {
+    const pairingIdx = args.indexOf('--pairing-code')
+    const baseUrlIdx = args.indexOf('--base-url')
+    const s: Session = {}
+    if (pairingIdx >= 0) s.pairingCode = args[pairingIdx + 1]
+    if (baseUrlIdx >= 0) s.baseUrl = args[baseUrlIdx + 1]
+    if (!s.pairingCode) {
+      console.log('Usage: agent-cli login --pairing-code <code from the app> [--base-url <url>]')
+      console.log('Copy the pairing code from the app header ("Start AI agent pairing" button).')
+      console.log('The agent stays usable while the paired browser keeps polling (max 5 minutes idle).')
+      process.exit(1)
+    }
+    saveSession(s)
+    console.log('Pairing code saved')
+    break
+  }
+  case 'logout':
+    clearSession()
+    console.log('Logged out')
+    break
+  case 'screen':
+    await req('GET', '/agent/screen')
+    break
+  case 'data':
+    await req('GET', '/agent/data')
+    break
+  case 'screens':
+    await req('GET', '/agent/screens')
+    break
+  case 'navigate':
+    await req('POST', '/agent/navigate', { screen: args[0], params: args[1] ? JSON.parse(args[1]) : {} })
+    break
+  case 'create':
+    await req('POST', '/agent/products', JSON.parse(args[0] ?? '{}'))
+    break
+  case 'edit':
+    await req('PATCH', `/agent/products/${args[0]}`, JSON.parse(args[1] ?? '{}'))
+    break
+  case 'delete':
+    await req('DELETE', `/agent/products/${args[0]}`)
+    break
+  default:
+    console.log(`Commands: login, logout, screen, data, screens, navigate, create, edit, delete`)
+}

@@ -1,21 +1,36 @@
 <script setup lang="ts">
 import { Icon } from '@iconify/vue/offline'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-import { usePage } from '@inertiajs/vue3'
+import { usePage, router } from '@inertiajs/vue3'
 import LanguageSwitcher from '../components/LanguageSwitcher.vue'
 import { useLocale, useT } from '../composables/useLocale'
 import { useFlashSuccess } from '../composables/useFlashSuccess'
+import { useAgentPairing } from '../composables/useAgentPairing'
+import { syncScreen as syncAgentScreen } from '../lib/agentApi'
 import type { UserType } from '../../routes/auth/common'
+
+/*
+ * Variables
+ */
 
 const locale = useLocale()
 const t = useT()
 const { message: flashSuccess, visible: flashVisible, dismiss: dismissFlash } = useFlashSuccess()
-
-const page = usePage<{ authUser?: UserType | null }>()
+const page = usePage<{ authUser?: UserType | null, csrfToken?: string | null }>()
 const authUser = computed(() => page.props.authUser ?? null)
-
 const darkmode = ref(false)
 const networkErrDialog = ref<HTMLDialogElement | null>(null)
+const { pairingCode, agentActive, createPairingCode, copyPairingCode, removePairingCode } = useAgentPairing()
+
+/*
+ * Functions
+ */
+
+function syncScreen() {
+  const comp = page.component
+  const screen = comp.endsWith('/index') ? comp.slice(0, -6) : comp
+  syncAgentScreen(page.props.csrfToken, screen)
+}
 
 function toggleDark() {
   darkmode.value = !darkmode.value
@@ -35,7 +50,13 @@ function onDialogBackdropClick(event: MouseEvent) {
   }
 }
 
+/*
+ * Initialisation
+ */
+
+router.on('navigate', syncScreen)
 onMounted(() => {
+  syncScreen()
   document.addEventListener('inertia:networkError', onNetworkError)
 })
 
@@ -52,6 +73,12 @@ watch(darkmode, (value) => {
   <a href="#main" id="skip-link" class="skip-link">{{ t('Skip to main content') }}</a>
   <div class="container" :class="['lang-' + locale.lang]">
     <header class="page-header">
+      <div class="agent-pairing">
+        <button type="button" @click="createPairingCode">{{ t('Start AI agent pairing') }}</button>
+        <button type="button" @click="removePairingCode" :disabled="!agentActive">{{ t('Stop pairing') }}</button>
+        <span v-if="pairingCode">{{ t('Pairing code: {0}', pairingCode) }}</span>
+        <button v-if="pairingCode" type="button" @click="copyPairingCode">{{ t('Copy') }}</button>
+      </div>
       <div class="branding">
         <img src="/images/vue-logo.png" alt="Vue logo" class="logo"/>
         <h1>Vue CRUD Inertia</h1>
@@ -76,9 +103,9 @@ watch(darkmode, (value) => {
     </div>
     <slot />
     <dialog ref="networkErrDialog" id="networkErrDialog" @click="onDialogBackdropClick">
-      <h2>Network error</h2>
-      <p>Offline? Check your connection</p>
-      <button type="button" @click="closeNetworkError">Close</button>
+      <h2>{{ t('Network error') }}</h2>
+      <p>{{ t('Offline? Check your connection') }}</p>
+      <button type="button" @click="closeNetworkError">{{ t('Close') }}</button>
     </dialog>
   </div>
 </template>

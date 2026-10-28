@@ -78,11 +78,11 @@ onMounted(() => {
     </div>
     <div class="filters row">
       <div class="form-group product-search">
-        <label for="search-element">{{ t('Search') }}</label>
+        <label for="search-element">{{ serverFilter ? t('Search by name') : t('Search') }}</label>
         <input v-model="searchKey" class="form-control" id="search-element"
           :aria-description="serverFilter
-            ? t('Filter products by the starting letters of the product name')
-            : t('Filter products by name, description or price')" />
+            ? t('Search products by the starting letters of the product name')
+            : t('Search products by name, description or price')" />
       </div>
     </div>
     <InfiniteScroll data="products" :buffer="200" as="div" preserve-url>

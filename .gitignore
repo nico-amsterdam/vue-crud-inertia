@@ -25,3 +25,6 @@ src/generated/
 **/*.tar.gz
 **/*.tgz
 **/*.log
+
+# agent-cli saved pairing code (scripts/agent-cli.ts)
+.agent-session.json

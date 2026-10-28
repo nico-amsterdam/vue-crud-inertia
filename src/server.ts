@@ -14,6 +14,7 @@ import { allowRequest } from './lib/security'
 import { DEV_FLASH_SECRET, requireSecret } from './lib/secrets'
 import { authController, csrfProtect, requireAuth } from './routes/auth'
 import products from './routes/products'
+import agent, { requireAgentAuth } from './routes/agent'
 import { errorPage, renderNotFound } from './routes/errors'
 
 const isDev = process.env.NODE_ENV !== 'production'
@@ -192,6 +193,8 @@ export const app = base
   // '.use("/products", ...)' matches the exact path only.
   .use('/products/*', requireAuth, csrfProtect)
   .route('/products', products)
+  .use('/agent/*', requireAgentAuth)
+  .route('/agent', agent)
 
 /*
  * Friendly error pages instead of Hono's plain "404 Not Found" and unstyled

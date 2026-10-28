@@ -77,9 +77,9 @@ function loginPageHtml(c: Context, expired = false): string {
 export const authController = new Hono<AppEnv>()
   .route('/', githubController)
   .route('/', googleController)
-  .get('/login', (c) => {
+  .get('/login', async (c) => {
     // logout: remove previous cookie
-    clearSession(c)
+    await clearSession(c)
     return c.html(loginPageHtml(c))
   })
   .post('/login', (c) => {
