@@ -1,5 +1,5 @@
 import type { InertiaVariables } from '@sneakylenny/inertia-hono'
-import type { UserType } from '../routes/auth/common'
+import type { UserType } from '@/routes/auth/common'
 
 export type AppEnv = {
   Variables: InertiaVariables & {

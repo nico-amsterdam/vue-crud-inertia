@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { Link, router } from '@inertiajs/vue3'
 import { ref } from 'vue'
-import ProductForm from '../../components/ProductForm.vue'
-import type { ProductErrorsType } from '../../../types/product'
-import { useT } from '../../composables/useLocale'
-import { useCsrfHeaders, useSubmitting } from '../../composables/useSubmitting'
+import ProductForm from '@/inertia/components/ProductForm.vue'
+import type { ProductErrorsType } from '@/types/product'
+import { useT } from '@/inertia/composables/useLocale'
+import { useCsrfHeaders, useSubmitting } from '@/inertia/composables/useSubmitting'
 
 interface Props {
   errors?: ProductErrorsType

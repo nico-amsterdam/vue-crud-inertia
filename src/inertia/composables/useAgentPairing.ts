@@ -1,8 +1,8 @@
 import { ref } from 'vue'
 import { usePage } from '@inertiajs/vue3'
-import type { UserType } from '../../routes/auth/common'
+import type { UserType } from '@/routes/auth/common'
 import { useAgentNavigation } from './useAgentNavigation'
-import { createPairing, removePairing } from '../lib/agentApi'
+import { createPairing, removePairing } from '@/inertia/lib/agentApi'
 
 /**
  * Owns the agent-pairing UI state for the VueCrud layout: the displayed

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'bun:test'
-import { ALL_LANGUAGES, STANDARD_LANGUAGE } from '../../src/i18n/lang'
-import { getTranslationKeys, newLocale, translate } from '../../src/i18n/translations'
+import { ALL_LANGUAGES, STANDARD_LANGUAGE } from '@/i18n/lang'
+import { getTranslationKeys, newLocale, translate } from '@/i18n/translations'
 
 describe('translate', () => {
   describe('basic translations', () => {

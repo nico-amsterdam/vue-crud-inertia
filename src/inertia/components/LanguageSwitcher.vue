@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { setLocale, useLocale, useT } from '../composables/useLocale'
+import { setLocale, useLocale, useT } from '@/inertia/composables/useLocale'
 
 const locale = useLocale()
 const t = useT()

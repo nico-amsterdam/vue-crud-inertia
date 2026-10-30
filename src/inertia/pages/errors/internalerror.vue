@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3'
-import { useT } from '../../composables/useLocale'
+import { useT } from '@/inertia/composables/useLocale'
 
 const t = useT()
 </script>

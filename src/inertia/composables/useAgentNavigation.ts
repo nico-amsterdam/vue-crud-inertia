@@ -1,6 +1,6 @@
 import { router } from '@inertiajs/vue3'
 import { ref } from 'vue'
-import { pollNavigate } from '../lib/agentApi'
+import { pollNavigate } from '@/inertia/lib/agentApi'
 
 export function useAgentNavigation() {
   const active = ref(false)

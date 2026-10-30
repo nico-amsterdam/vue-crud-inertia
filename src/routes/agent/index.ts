@@ -1,10 +1,10 @@
 import { Hono } from 'hono'
 import type { Context, MiddlewareHandler } from 'hono'
-import type { AppEnv } from '../../types/env'
-import { generateSecureRandomString } from '../../lib/security'
-import { readSession } from '../auth/common'
-import { validateProduct } from '../products/validation'
-import { tables, getDB} from '../../db/index'
+import type { AppEnv } from '@/types/env'
+import { generateSecureRandomString } from '@/lib/security'
+import { readSession } from '@/routes/auth/common'
+import { validateProduct } from '@/routes/products/validation'
+import { tables, getDB} from '@/db/index'
 import {
   AGENT_HEARTBEAT_INTERVAL_MS,
   AGENT_IDLE_TIMEOUT_MS,
@@ -15,7 +15,7 @@ import {
   touchPairing,
   upsertPairing,
 } from './store'
-import { createProduct, deleteProduct, getProductById, loadProductsPage, productNameExists, toProduct, updateProduct } from '../products/store'
+import { createProduct, deleteProduct, getProductById, loadProductsPage, productNameExists, toProduct, updateProduct } from '@/routes/products/store'
 
 export { AGENT_HEARTBEAT_INTERVAL_MS, AGENT_IDLE_TIMEOUT_MS }
 

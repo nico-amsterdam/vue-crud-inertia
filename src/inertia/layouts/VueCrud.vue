@@ -2,12 +2,12 @@
 import { Icon } from '@iconify/vue/offline'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { usePage, router } from '@inertiajs/vue3'
-import LanguageSwitcher from '../components/LanguageSwitcher.vue'
-import { useLocale, useT } from '../composables/useLocale'
-import { useFlashSuccess } from '../composables/useFlashSuccess'
-import { useAgentPairing } from '../composables/useAgentPairing'
-import { syncScreen as syncAgentScreen } from '../lib/agentApi'
-import type { UserType } from '../../routes/auth/common'
+import LanguageSwitcher from '@/inertia/components/LanguageSwitcher.vue'
+import { useLocale, useT } from '@/inertia/composables/useLocale'
+import { useFlashSuccess } from '@/inertia/composables/useFlashSuccess'
+import { useAgentPairing } from '@/inertia/composables/useAgentPairing'
+import { syncScreen as syncAgentScreen } from '@/inertia/lib/agentApi'
+import type { UserType } from '@/routes/auth/common'
 
 /*
  * Variables

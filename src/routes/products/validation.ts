@@ -1,6 +1,6 @@
 import type { Context } from 'hono'
-import type { ProductBaseType, ProductErrorsType } from '../../types/product'
-import { t } from '../../i18n/request'
+import type { ProductBaseType, ProductErrorsType } from '@/types/product'
+import { t } from '@/i18n/request'
 
 /** Maximum product name length (shared by the form, validation and the search clamp). */
 export const MAX_NAME_LENGTH = 20
@@ -18,9 +18,9 @@ export function translateFieldErrors(c: Context, errors: ProductErrorsType): Pro
   return translated
 }
 
-export function validateProduct(body: unknown): { valid: true; data: ProductBaseType } | { valid: false; errors: ProductErrorsType } {
+export function validateProduct(payload: unknown): { valid: true; data: ProductBaseType } | { valid: false; errors: ProductErrorsType } {
   const errors: ProductErrorsType = {}
-  const input = (typeof body === 'object' && body !== null ? body : {}) as Record<string, unknown>
+  const input = (typeof payload === 'object' && payload !== null ? payload : {}) as Record<string, unknown>
   const productName = typeof input.productName === 'string' ? input.productName.trim() : ''
   const description = typeof input.description === 'string' ? input.description.trim() : ''
   const rawPrice = input.price

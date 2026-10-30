@@ -6,7 +6,7 @@ import {
   getLang,
   getContentLanguage,
   setContentLanguage,
-} from '../../src/i18n/lang'
+} from '@/i18n/lang'
 
 describe('language constants', () => {
   it('should contain supported non-English languages', () => {

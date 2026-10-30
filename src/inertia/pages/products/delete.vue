@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { Link, router } from '@inertiajs/vue3'
-import type { ProductType } from '../../../types/product'
-import { useT } from '../../composables/useLocale'
-import { useCsrfHeaders, useSubmitting } from '../../composables/useSubmitting'
+import type { ProductType } from '@/types/product'
+import { useT } from '@/inertia/composables/useLocale'
+import { useCsrfHeaders, useSubmitting } from '@/inertia/composables/useSubmitting'
 
 interface Props {
   product: ProductType

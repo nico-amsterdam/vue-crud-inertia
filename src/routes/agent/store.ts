@@ -1,5 +1,5 @@
 import { and, eq, gt, lt } from 'drizzle-orm'
-import { getDB, tables } from '../../db/index'
+import { getDB, tables } from '@/db/index'
 
 /** Browser polls /agent/navigate every 2s; the heartbeat is persisted at most once per minute. */
 export const AGENT_HEARTBEAT_INTERVAL_MS = 60_000

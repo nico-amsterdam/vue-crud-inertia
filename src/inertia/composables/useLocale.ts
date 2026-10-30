@@ -1,8 +1,8 @@
 import { usePage } from '@inertiajs/vue3'
 import { computed, ref } from 'vue'
-import { LANG_COOKIE, STANDARD_LANGUAGE } from '../../i18n/lang'
-import { newLocale } from '../../i18n/translations'
-import type { LocaleType } from '../../i18n/translations'
+import { LANG_COOKIE, STANDARD_LANGUAGE } from '@/i18n/lang'
+import { newLocale } from '@/i18n/translations'
+import type { LocaleType } from '@/i18n/translations'
 
 /** Shape of the props the server always shares (`createInertia({ share })`). */
 type SharedProps = {

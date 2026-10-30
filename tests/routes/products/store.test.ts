@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { namePrefixPattern, priceToCents, toProduct } from '../../../src/routes/products/store'
+import { namePrefixPattern, priceToCents, toProduct } from '@/routes/products/store'
 
 describe('namePrefixPattern', () => {
   test('matches everything for an empty query', () => {

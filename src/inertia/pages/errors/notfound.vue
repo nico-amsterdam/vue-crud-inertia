@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3'
-import { useT } from '../../composables/useLocale'
+import { useT } from '@/inertia/composables/useLocale'
 
 interface Props {
   /** The requested URL path, quoted in the explanation. */

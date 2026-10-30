@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { Hono, type Context } from 'hono'
-import type { AppEnv } from '../../../src/types/env'
-import { errorPage, renderNotFound } from '../../../src/routes/errors'
+import type { AppEnv } from '@/types/env'
+import { errorPage, renderNotFound } from '@/routes/errors'
 
 /**
  * A minimal routing app with an "inertia" stub, so the error page helpers can

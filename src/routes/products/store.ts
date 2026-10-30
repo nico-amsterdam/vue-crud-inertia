@@ -1,6 +1,6 @@
 import { asc, and, eq, isNull, sql } from 'drizzle-orm'
-import { getDB, tables } from '../../db/index'
-import type { ProductBaseType, ProductType } from '../../types/product'
+import { getDB, tables } from '@/db/index'
+import type { ProductBaseType, ProductType } from '@/types/product'
 
 /*
  * Database-backed product store

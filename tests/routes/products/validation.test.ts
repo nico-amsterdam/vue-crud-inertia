@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { MAX_DESCRIPTION_LENGTH, MAX_NAME_LENGTH, MAX_PRICE, validateProduct } from '../../../src/routes/products/validation'
+import { MAX_DESCRIPTION_LENGTH, MAX_NAME_LENGTH, MAX_PRICE, validateProduct } from '@/routes/products/validation'
 
 describe('validateProduct', () => {
   test('trims values and accepts a valid product', () => {

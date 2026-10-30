@@ -13,5 +13,5 @@ export const tables = schema
  */
 
 export function getDB() {
-    return Container.get<DrizzleD1Database<typeof import('../db/schema')>>('DrizzleDB')
+    return Container.get<DrizzleD1Database<typeof import('@/db/schema')>>('DrizzleDB')
 }

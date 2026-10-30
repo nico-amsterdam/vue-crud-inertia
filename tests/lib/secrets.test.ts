@@ -3,7 +3,7 @@ import {
   DEV_FLASH_SECRET,
   DEV_SESSION_SECRET,
   requireSecret,
-} from '../../src/lib/secrets'
+} from '@/lib/secrets'
 
 const originalNodeEnv = process.env.NODE_ENV
 const originalSessionSecret = process.env.SESSION_SECRET

@@ -1,8 +1,8 @@
 import { Hono } from 'hono'
-import { calcStateHmac, stateSecretKey } from '../../lib/security'
-import { getBaseURL } from '../../lib/url'
-import { NON_DEFAULT_LANGUAGES } from '../../i18n/lang'
-import type { AppEnv } from '../../types/env'
+import { calcStateHmac, stateSecretKey } from '@/lib/security'
+import { getBaseURL } from '@/lib/url'
+import { NON_DEFAULT_LANGUAGES } from '@/i18n/lang'
+import type { AppEnv } from '@/types/env'
 import {
   LOGIN_PATH,
   SESSION_SECRET,

@@ -1,7 +1,7 @@
 import type { Context } from 'hono'
 import { deleteCookie, getSignedCookie, setSignedCookie } from 'hono/cookie'
-import { generateSecureRandomString, getIp, stripMobileDesktopFromUserAgent } from '../../lib/security'
-import { DEV_SESSION_SECRET, requireSecret } from '../../lib/secrets'
+import { generateSecureRandomString, getIp, stripMobileDesktopFromUserAgent } from '@/lib/security'
+import { DEV_SESSION_SECRET, requireSecret } from '@/lib/secrets'
 
 /*
  * Types
@@ -88,7 +88,7 @@ export async function clearSession(c: Context): Promise<void> {
     if (typeof value === 'string') {
       const session = JSON.parse(value) as SessionCookieType
       // delete pairing relation
-      const { getDB, tables } = await import('../../db/index')
+      const { getDB, tables } = await import('@/db/index')
       const { eq } = await import('drizzle-orm')
       await getDB().delete(tables.pairingCodes).where(eq(tables.pairingCodes.code, session.id))
     }

@@ -1,11 +1,11 @@
 import { Hono } from 'hono'
 import type { Context } from 'hono'
 import { render, scroll } from '@sneakylenny/inertia-hono'
-import type { ProductBaseType, ProductType } from '../../types/product'
-import type { AppEnv } from '../../types/env'
-import { t } from '../../i18n/request'
-import { rateLimit } from '../../middleware/rate-limit'
-import { renderNotFound } from '../errors'
+import type { ProductBaseType, ProductType } from '@/types/product'
+import type { AppEnv } from '@/types/env'
+import { t } from '@/i18n/request'
+import { rateLimit } from '@/middleware/rate-limit'
+import { renderNotFound } from '@/routes/errors'
 import {
   DEFAULT_USER,
   createProduct,

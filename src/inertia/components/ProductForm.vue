@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
-import type { ProductBaseType, ProductErrorsType } from '../../types/product'
-import { useT } from '../composables/useLocale'
+import type { ProductBaseType, ProductErrorsType } from '@/types/product'
+import { useT } from '@/inertia/composables/useLocale'
 
 interface Props {
   theProduct: ProductBaseType

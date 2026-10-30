@@ -2,10 +2,10 @@
 import { Icon } from '@iconify/vue/offline'
 import { InfiniteScroll, router, Link } from '@inertiajs/vue3'
 import { computed, onBeforeUnmount, onMounted, watch } from 'vue'
-import type { ProductType } from '../../../types/product'
-import { useT } from '../../composables/useLocale'
-import { useProductSearch } from '../../composables/useProductSearch'
-import { useRefresh } from '../../composables/useSubmitting'
+import type { ProductType } from '@/types/product'
+import { useT } from '@/inertia/composables/useLocale'
+import { useProductSearch } from '@/inertia/composables/useProductSearch'
+import { useRefresh } from '@/inertia/composables/useSubmitting'
 
 interface Props {
   products: ProductType[]
