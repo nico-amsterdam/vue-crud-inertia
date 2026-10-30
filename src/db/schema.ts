@@ -25,6 +25,7 @@ export const appState = sqliteTable('app_state', {
 export const pairingCodes = sqliteTable('pairing_codes', {
   code: text('code').primaryKey(),
   login: text('login').notNull(),
+  session_id: text('session_id').notNull().unique(),
   createdAt: integer("created_at", { mode: "timestamp_ms" })
     .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
     .notNull(),

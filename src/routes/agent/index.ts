@@ -1,8 +1,10 @@
 import { Hono } from 'hono'
 import type { Context, MiddlewareHandler } from 'hono'
 import type { AppEnv } from '../../types/env'
+import { generateSecureRandomString } from '../../lib/security'
 import { readSession } from '../auth/common'
 import { validateProduct } from '../products/validation'
+import { tables, getDB} from '../../db/index'
 import {
   AGENT_HEARTBEAT_INTERVAL_MS,
   AGENT_IDLE_TIMEOUT_MS,
@@ -43,6 +45,7 @@ export const requireAgentAuth: MiddlewareHandler<AppEnv> = async (c, next) => {
     c.set('authUser', { login: 'dev:local', name: 'Local Dev', email: '', avatar_url: '' })
     c.set('csrfToken', 'dev-csrf-token')
     c.set('agentSessionId', DEV_PAIRING_SESSION_ID)
+    await touchPairing(DEV_PAIRING_SESSION_ID)
     return next()
   }
 
@@ -64,11 +67,11 @@ export const requireAgentAuth: MiddlewareHandler<AppEnv> = async (c, next) => {
   if (code) {
     const row = await getPairing(code)
     if (!row) return c.json({ error: 'Invalid pairing code' }, 401)
-    if (!row.lastAccessedAt || Date.now() - row.lastAccessedAt.getTime() > AGENT_IDLE_TIMEOUT_MS) {
+    if (row.lastAccessedAt && Date.now() - row.lastAccessedAt.getTime() > AGENT_IDLE_TIMEOUT_MS) {
       return c.json({ error: 'Pairing window expired: the paired browser has not polled for 5 minutes' }, 401)
     }
     c.set('authUser', { login: row.login, name: '', email: '', avatar_url: '' })
-    c.set('agentSessionId', code)
+    c.set('agentSessionId', row.session_id)
     return next()
   }
 
@@ -76,17 +79,15 @@ export const requireAgentAuth: MiddlewareHandler<AppEnv> = async (c, next) => {
 }
 
 function userKey(c: Context, key: string): string {
-  return `${key}:${c.var.authUser?.login ?? 'anon'}`
+  return `${key}:${c.var.agentSessionId ?? 'anon'}`
 }
 
 function getState(c: Context, key: string): Promise<any | null> {
-  const login = c.var.authUser?.login ?? 'anon'
-  return storeGetState(login, key)
+  return storeGetState(userKey(c, key))
 }
 
 async function setState(c: Context, key: string, value: any): Promise<void> {
-  const login = c.var.authUser?.login ?? 'anon'
-  await storeSetState(login, key, value)
+  await storeSetState(userKey(c, key), value)
 }
 
 /*
@@ -161,8 +162,22 @@ const app = new Hono<AppEnv>()
     const user = c.var.authUser
     const sessionId = c.var.agentSessionId
     if (!user || !sessionId) return c.json({ error: 'Not authenticated' }, 401)
-    await upsertPairing(sessionId, user.login)
-    return c.json({ code: sessionId })
+    // Look up existing pairing code for this session
+    const existing = await getPairing(sessionId)
+    if (existing) return c.json({ code: existing.code })
+    // Generate a new random code
+    const newCode = generateSecureRandomString()
+    // Insert new pairing row: code = random string, session_id = session id
+    await getDB().insert(tables.pairingCodes).values({
+      code: newCode,
+      login: user.login,
+      session_id: sessionId,
+      lastAccessedAt: new Date(),
+    }).onConflictDoUpdate({
+      target: tables.pairingCodes.code,
+      set: { login: user.login, lastAccessedAt: new Date() }
+    })
+    return c.json({ code: newCode })
   })
   .delete('/pairing/remove', async (c) => {
     const sessionId = c.var.agentSessionId
