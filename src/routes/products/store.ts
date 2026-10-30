@@ -74,7 +74,8 @@ export function priceToCents(price: number | null): number | null {
   return price === null ? null : Math.round(price * 100)
 }
 
-/** The validated fields both HTTP routes and the agent routes write (validateProduct output). */
+/** The validated fields both HTTP routes and the agent routes write
+ *  (validateProduct().data — without modifiedAt, which updateProduct stamps). */
 export type ProductInput = Pick<ProductBaseType, 'productName' | 'description' | 'price'>
 
 /** Insert a new product. Throws on constraint violations (e.g. duplicate name) —

@@ -1,9 +1,8 @@
 import { Hono } from 'hono'
 import type { Context, MiddlewareHandler } from 'hono'
 import type { AppEnv } from '@/types/env'
-import { generateSecureRandomString } from '@/lib/security'
+import { generateSecureRandomString, getIp } from '@/lib/security'
 import { readSession } from '@/routes/auth/common'
-import { validateProduct } from '@/routes/products/validation'
 import { tables, getDB} from '@/db/index'
 import {
   AGENT_HEARTBEAT_INTERVAL_MS,
@@ -11,11 +10,11 @@ import {
   getPairing,
   getState as storeGetState,
   removePairing,
+  setPairingIp,
   setState as storeSetState,
   touchPairing,
-  upsertPairing,
 } from './store'
-import { createProduct, deleteProduct, getProductById, loadProductsPage, productNameExists, toProduct, updateProduct } from '@/routes/products/store'
+import products, { type AgentScreenMeta, PRODUCT_SCREENS, loadProductScreenData } from './products'
 
 export { AGENT_HEARTBEAT_INTERVAL_MS, AGENT_IDLE_TIMEOUT_MS }
 
@@ -25,15 +24,11 @@ export { AGENT_HEARTBEAT_INTERVAL_MS, AGENT_IDLE_TIMEOUT_MS }
 
 export const AGENT_PAIRING_HEADER = 'x-pairing-code'
 export const DEV_PAIRING_SESSION_ID = 'dev-local'
-export const DEFAULT_AGENT_USER = 'agent'
 
 const MUTATING_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE']
 
-export const SCREENS: Record<string, { route: string; context: string[] }> = {
-  'products': { route: '/products', context: ['page', 'q'] },
-  'products/new': { route: '/products/new', context: [] },
-  'products/edit': { route: '/products/:id/edit', context: ['id'] },
-  'products/delete': { route: '/products/:id/delete', context: ['id'] },
+export const SCREENS: Record<string, AgentScreenMeta> = {
+  ...PRODUCT_SCREENS,
 }
 
 /*
@@ -70,6 +65,14 @@ export const requireAgentAuth: MiddlewareHandler<AppEnv> = async (c, next) => {
     if (row.lastAccessedAt && Date.now() - row.lastAccessedAt.getTime() > AGENT_IDLE_TIMEOUT_MS) {
       return c.json({ error: 'Pairing window expired: the paired browser has not polled for 5 minutes' }, 401)
     }
+    // IP pinning: the first agent contact stores its client address; every
+    // later agent request must come from the same address (refused with 401).
+    const ip = getIp(c.req.header())
+    if (row.ip === null) {
+      await setPairingIp(row.code, ip)
+    } else if (row.ip !== ip) {
+      return c.json({ error: 'Pairing code is used from a different IP address' }, 401)
+    }
     c.set('authUser', { login: row.login, name: '', email: '', avatar_url: '' })
     c.set('agentSessionId', row.session_id)
     return next()
@@ -101,20 +104,6 @@ const app = new Hono<AppEnv>()
     const meta = screen ? SCREENS[screen] ?? null : null
     return c.json({ screen, params: nav?.params ?? {}, context: meta?.context ?? [], route: meta?.route ?? null })
   })
-  .get('/data', async (c) => {
-    const nav = await getState(c, 'navigation')
-    const screen = nav?.screen ?? 'products'
-    if (screen === 'products') {
-      const { products } = await loadProductsPage(nav?.params?.page ?? 1)
-      return c.json({ screen, data: products })
-    }
-    if (screen === 'products/edit' || screen === 'products/delete') {
-      const id = Number(nav?.params?.id)
-      const p = id ? await getProductById(id) : null
-      return c.json({ screen, data: p ? toProduct(p) : null })
-    }
-    return c.json({ screen, data: null })
-  })
   .post('/navigate', async (c) => {
     const body = await c.req.json().catch(() => ({}))
     const screen = body?.screen
@@ -132,30 +121,6 @@ const app = new Hono<AppEnv>()
   .post('/state', async (c) => {
     const body = await c.req.json().catch(() => ({}))
     if (body?.navigation) await setState(c, 'navigation', body.navigation)
-    return c.json({ ok: true })
-  })
-  .post('/products', async (c) => {
-    const body = await c.req.json().catch(() => null)
-    if (!body) return c.json({ error: 'Invalid body' }, 400)
-    const result = validateProduct(body)
-    if (!result.valid) return c.json({ errors: result.errors }, 400)
-    if (await productNameExists(result.data.productName)) return c.json({ error: 'Name exists' }, 409)
-    const row = await createProduct(result.data, c.var.authUser?.login ?? DEFAULT_AGENT_USER)
-    return c.json({ ok: true, product: row ? toProduct(row) : null })
-  })
-  .patch('/products/:id', async (c) => {
-    const id = Number(c.req.param('id'))
-    const body = await c.req.json().catch(() => null)
-    if (!body) return c.json({ error: 'Invalid body' }, 400)
-    const result = validateProduct(body)
-    if (!result.valid) return c.json({ errors: result.errors }, 400)
-    const updated = await updateProduct(id, result.data, c.var.authUser?.login ?? DEFAULT_AGENT_USER)
-    if (!updated.length) return c.json({ error: 'Not found' }, 404)
-    return c.json({ ok: true, product: toProduct(updated[0]) })
-  })
-  .delete('/products/:id', async (c) => {
-    const id = Number(c.req.param('id'))
-    await deleteProduct(id)
     return c.json({ ok: true })
   })
   .post('/pairing/create', async (c) => {
@@ -185,5 +150,11 @@ const app = new Hono<AppEnv>()
     return c.json({ ok: true })
   })
   .get('/screens', (c) => c.json(SCREENS))
+  .get('/data', async (c) => {
+    const nav = await getState(c, 'navigation')
+    const screen = nav?.screen ?? 'products'
+    return c.json({ screen, data: await loadProductScreenData(screen, nav?.params) })
+  })
+  .route('/products', products)
 
 export default app

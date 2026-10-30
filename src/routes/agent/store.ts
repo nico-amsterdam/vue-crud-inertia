@@ -1,4 +1,4 @@
-import { and, eq, gt, lt } from 'drizzle-orm'
+import { and, eq, gt, lt, or } from 'drizzle-orm'
 import { getDB, tables } from '@/db/index'
 
 /** Browser polls /agent/navigate every 2s; the heartbeat is persisted at most once per minute. */
@@ -13,16 +13,26 @@ export type PairingRow = {
   login: string
   session_id: string
   lastAccessedAt: Date | null
+  ip: string | null
 }
 
 /** Look up a pairing row by code or sessionId. */
 export async function getPairing(identifier: string): Promise<PairingRow | undefined> {
   // Try by code first, then by session_id
   let row = await getDB().select().from(tables.pairingCodes).where(eq(tables.pairingCodes.code, identifier)).limit(1)
-  if (row[0]) return { code: row[0].code, login: row[0].login, session_id: row[0].session_id, lastAccessedAt: row[0].lastAccessedAt ?? null }
+  if (row[0]) return { code: row[0].code, login: row[0].login, session_id: row[0].session_id, lastAccessedAt: row[0].lastAccessedAt ?? null, ip: row[0].ip ?? null }
   row = await getDB().select().from(tables.pairingCodes).where(eq(tables.pairingCodes.session_id, identifier)).limit(1)
-  if (row[0]) return { code: row[0].code, login: row[0].login, session_id: row[0].session_id, lastAccessedAt: row[0].lastAccessedAt ?? null }
+  if (row[0]) return { code: row[0].code, login: row[0].login, session_id: row[0].session_id, lastAccessedAt: row[0].lastAccessedAt ?? null, ip: row[0].ip ?? null }
   return undefined
+}
+
+/** Bind a pairing code to the client IP of its first agent contact
+ *  (agent-cli). Later agent requests must come from the same address. */
+export async function setPairingIp(code: string, ip: string): Promise<void> {
+  await getDB()
+    .update(tables.pairingCodes)
+    .set({ ip })
+    .where(eq(tables.pairingCodes.code, code))
 }
 
 /** Create or refresh a pairing row (user action from the browser). */
@@ -45,14 +55,21 @@ export async function removePairing(sessionId: string): Promise<void> {
  * refresh it themselves, otherwise an agent could keep itself alive without
  * the browser present.
  */
-export async function touchPairing(code: string): Promise<void> {
+export async function touchPairing(identifier: string): Promise<void> {
+  // Called with the browser session id (and, historically, occasionally with
+  // the code itself). Match by code OR session_id — pairing/create rows have a
+  // random code that differs from the session id.
+  const byId = or(
+    eq(tables.pairingCodes.code, identifier),
+    eq(tables.pairingCodes.session_id, identifier),
+  )
   const since = new Date(Date.now() - AGENT_HEARTBEAT_INTERVAL_MS)
   const fresh = await getDB().select({ code: tables.pairingCodes.code })
     .from(tables.pairingCodes)
-    .where(and(eq(tables.pairingCodes.code, code), gt(tables.pairingCodes.lastAccessedAt, since)))
+    .where(and(byId, gt(tables.pairingCodes.lastAccessedAt, since)))
     .limit(1)
   if (fresh.length) return
-  await getDB().update(tables.pairingCodes).set({ lastAccessedAt: new Date() }).where(eq(tables.pairingCodes.code, code))
+  await getDB().update(tables.pairingCodes).set({ lastAccessedAt: new Date() }).where(byId)
 }
 
 /**

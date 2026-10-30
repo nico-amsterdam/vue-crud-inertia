@@ -34,4 +34,8 @@ export const pairingCodes = sqliteTable('pairing_codes', {
   // are refused once this is older than five minutes. Never touched by
   // agent requests themselves — the agent cannot keep itself alive.
   lastAccessedAt: integer("last_accessed_at", { mode: "timestamp_ms" }),
+  // Client IP of the first agent contact (agent-cli with the pairing code),
+  // set when it is still null. Later agent requests must come from the same
+  // address (401 otherwise). Browser session requests are not bound to it.
+  ip: text('ip'),
 })
