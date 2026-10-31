@@ -23,7 +23,7 @@ Middleware runs in this order; keep new cross-cutting middleware in the right sl
 3. Language (`?lang=xx` → cookie → `Accept-Language` → `en`)
 4. Fetch-metadata check (`allowRequest` in `src/lib/security.ts` → `403`)
 5. Inertia adapter (`@sneakylenny/inertia-hono`): `share()` exposes `locale`, `authUser`, `csrfToken`; `flashSecret` signs one-shot flash cookies
-6. Routes: `/auth` (public), then `.use('/products/*', requireAuth, csrfProtect)` → `.route('/products', products)`
+6. Routes: `/auth` (public), then `.use('/products/*', requireAuth, csrfProtect)` → `.route('/products', products)`, and `.use('/agent/*', requireAuth)` → `.route('/agent', agent)`
 
 **Critical Hono gotcha**: `.use('/products', mw)` matches only the *exact* path `/products`. Subpaths (`/products/new`, `/products/:id`, …) skip the middleware. Always mount route protection with a trailing `/*`: `.use('/products/*', requireAuth, csrfProtect)`. `tests/routes/auth/auth.test.ts` guards this.
 
@@ -60,9 +60,21 @@ Protocol notes:
   - Login page at `/auth/login` is plain server-rendered HTML (GET clears the session = logout)
 - `src/routes/auth/github.ts` / `google.ts`: OAuth start + callback. State is an HMAC (`calcStateHmac`) over IP/UA/protocol; redirect URIs derive from the request origin (`src/lib/url.ts`): `<origin>/auth/github` and `<origin>/auth/google`
 
+## Agent interface (pairing code + CLI)
+
+- External agents act **as the user** through a pairing code: the UI's "Start agent pairing" button shows the session id and stores `pairing_codes.code → user.login`; "Remove pairing code" deletes it, and `clearSession` (logout) also removes the row.
+- `GET /agent/screen` reports the user's current screen + params (the Inertia layout syncs navigation on every visit; `/products/:id/(edit|delete)` extracts the numeric id from the URL), `context` (the keys the agent must supply) and the matching route
+- `GET /agent/data` returns **real objects**, never HTML/JSON-in-a-string: the current page of products, or the single product for edit/delete
+- `POST /agent/navigate` + `GET /agent/navigate` move the UI: the layout starts polling only between "Start agent pairing" and "Stop agent pairing"
+- CRUD tools for agents: `POST /agent/products`, `PATCH /agent/products/:id`, `DELETE /agent/products/:id` (validation reuses `src/routes/products/*`)
+- Agent requests authenticate **without a browser session** via header `X-Pairing-Code: <code>`; `resolveAgentUser` maps the code to the owner's login and app state is keyed `key:<login>` so browser and agent share per-user state (`app_state` table)
+- Auth routes for pairing are `.use('/agent/*', requireAuth)` in `src/server.ts`; pairing create/remove require the browser session's `X-CSRF-Token`
+- CLI: `bun scripts/agent-cli.ts` — `login --pairing-code <code>`, `logout`, `screen`, `data`, `screens`, `navigate <screen> [paramsJson]`, `create <json>`, `edit <id> <json>`, `delete <id>`; session state persists in `.agent-session.json`
+
 ## Database
 
 - Schema in `src/db/schema.ts` (Drizzle). Price is stored as **cents** (integer); convert with `priceToCents` / `toProduct` in `src/routes/products/store.ts`
+- App-facing runtime state for the agent is in `app_state` (key/value JSON, keyed per user) and pairing in `pairing_codes` (`code`, `login`, `created_at`); migrations 0001/0002 add them
 - Optimistic concurrency on edit: `modifiedAt` timestamp is verified in the `PATCH` WHERE clause
 - Migrations: `bun migrate:create` (generate), `bun migrate:dev` (local), `bun migrate` (production)
 

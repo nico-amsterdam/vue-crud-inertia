@@ -20,7 +20,7 @@ const page = usePage<{ authUser?: UserType | null, csrfToken?: string | null }>(
 const authUser = computed(() => page.props.authUser ?? null)
 const darkmode = ref(false)
 const networkErrDialog = ref<HTMLDialogElement | null>(null)
-const { pairingCode, agentActive, createPairingCode, copyPairingCode, removePairingCode } = useAgentPairing()
+const { pairingCode, pairingStage, agentActive, createPairingCode, copyPairingCode, removePairingCode } = useAgentPairing()
 
 /*
  * Functions
@@ -29,7 +29,10 @@ const { pairingCode, agentActive, createPairingCode, copyPairingCode, removePair
 function syncScreen() {
   const comp = page.component
   const screen = comp.endsWith('/index') ? comp.slice(0, -6) : comp
-  syncAgentScreen(page.props.csrfToken, screen)
+  // Keep the :id parameter for edit/delete screens so agents can read it back.
+  const idMatch = window.location.pathname.match(/\/products\/(\d+)\/(edit|delete)/)
+  const params: Record<string, unknown> = idMatch ? { id: Number(idMatch[1]) } : {}
+  syncAgentScreen(page.props.csrfToken, screen, params)
 }
 
 function toggleDark() {
@@ -73,12 +76,6 @@ watch(darkmode, (value) => {
   <a href="#main" id="skip-link" class="skip-link">{{ t('Skip to main content') }}</a>
   <div class="container" :class="['lang-' + locale.lang]">
     <header class="page-header">
-      <div class="agent-pairing">
-        <button type="button" @click="createPairingCode">{{ t('Start AI agent pairing') }}</button>
-        <button type="button" @click="removePairingCode" :disabled="!agentActive">{{ t('Stop pairing') }}</button>
-        <span v-if="pairingCode">{{ t('Pairing code: {0}', pairingCode) }}</span>
-        <button v-if="pairingCode" type="button" @click="copyPairingCode">{{ t('Copy') }}</button>
-      </div>
       <div class="branding">
         <img src="/images/vue-logo.png" alt="Vue logo" class="logo"/>
         <h1>Vue CRUD Inertia</h1>
@@ -97,6 +94,21 @@ watch(darkmode, (value) => {
         </span>
       </div>
     </header>
+    <div class="agent-pairing">
+      <template v-if="pairingStage === 'idle'">
+        <button class="btn btn-default btn-xs" type="button" @click="createPairingCode">{{ t('Start AI agent pairing') }}</button>
+      </template>
+      <template v-if="pairingStage === 'showing'">
+        <span>
+          <span class="text">{{ pairingCode }}</span>
+        </span>
+        <button class="btn btn-default btn-xs" type="button" @click="copyPairingCode">{{ t('Copy') }}</button>
+        <button class="btn btn-default btn-xs" type="button" @click="removePairingCode" :disabled="!agentActive">{{ t('Stop pairing') }}</button>
+      </template>
+      <template v-if="pairingStage === 'copied'">
+        <button class="btn btn-default btn-xs" type="button" @click="removePairingCode" :disabled="!agentActive">{{ t('Stop pairing') }}</button>
+      </template>
+    </div>
     <div class="flash flash-success" :class="{ 'flash--visible': flashVisible && flashSuccess }" role="status">
       <span>{{ flashSuccess }}</span>
       <button type="button" class="flash-dismiss" :aria-label="t('Dismiss')" @click="dismissFlash">×</button>
@@ -215,4 +227,14 @@ body.dark .flash-success {
   color: inherit;
   padding: 0 4px
 }
+
+.agent-pairing button {
+  margin: 5px 5px 0 0
+}
+
+.agent-pairing .text {
+  margin: 5px 5px 0 0;
+  vertical-align: sub;
+}
+
 </style>

@@ -8,11 +8,13 @@ import {
   AGENT_HEARTBEAT_INTERVAL_MS,
   AGENT_IDLE_TIMEOUT_MS,
   getPairing,
+  getPairingBySessionId,
   getState as storeGetState,
   removePairing,
   setPairingIp,
   setState as storeSetState,
   touchPairing,
+  upsertPairing,
 } from './store'
 import products, { type AgentScreenMeta, PRODUCT_SCREENS, loadProductScreenData } from './products'
 
@@ -128,20 +130,11 @@ const app = new Hono<AppEnv>()
     const sessionId = c.var.agentSessionId
     if (!user || !sessionId) return c.json({ error: 'Not authenticated' }, 401)
     // Look up existing pairing code for this session
-    const existing = await getPairing(sessionId)
+    const existing = await getPairingBySessionId(sessionId)
     if (existing) return c.json({ code: existing.code })
-    // Generate a new random code
+    // Generate a new random code and store it with the session id
     const newCode = generateSecureRandomString()
-    // Insert new pairing row: code = random string, session_id = session id
-    await getDB().insert(tables.pairingCodes).values({
-      code: newCode,
-      login: user.login,
-      session_id: sessionId,
-      lastAccessedAt: new Date(),
-    }).onConflictDoUpdate({
-      target: tables.pairingCodes.code,
-      set: { login: user.login, lastAccessedAt: new Date() }
-    })
+    await upsertPairing(newCode, user.login, sessionId)
     return c.json({ code: newCode })
   })
   .delete('/pairing/remove', async (c) => {

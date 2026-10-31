@@ -16,12 +16,16 @@ export type PairingRow = {
   ip: string | null
 }
 
-/** Look up a pairing row by code or sessionId. */
+/** Look up a pairing row by code only. */
 export async function getPairing(identifier: string): Promise<PairingRow | undefined> {
-  // Try by code first, then by session_id
-  let row = await getDB().select().from(tables.pairingCodes).where(eq(tables.pairingCodes.code, identifier)).limit(1)
+  const row = await getDB().select().from(tables.pairingCodes).where(eq(tables.pairingCodes.code, identifier)).limit(1)
   if (row[0]) return { code: row[0].code, login: row[0].login, session_id: row[0].session_id, lastAccessedAt: row[0].lastAccessedAt ?? null, ip: row[0].ip ?? null }
-  row = await getDB().select().from(tables.pairingCodes).where(eq(tables.pairingCodes.session_id, identifier)).limit(1)
+  return undefined
+}
+
+/** Look up a pairing row by the browser session id. */
+export async function getPairingBySessionId(sessionId: string): Promise<PairingRow | undefined> {
+  const row = await getDB().select().from(tables.pairingCodes).where(eq(tables.pairingCodes.session_id, sessionId)).limit(1)
   if (row[0]) return { code: row[0].code, login: row[0].login, session_id: row[0].session_id, lastAccessedAt: row[0].lastAccessedAt ?? null, ip: row[0].ip ?? null }
   return undefined
 }
@@ -36,10 +40,15 @@ export async function setPairingIp(code: string, ip: string): Promise<void> {
 }
 
 /** Create or refresh a pairing row (user action from the browser). */
-export async function upsertPairing(code: string, login: string, now: Date = new Date()): Promise<void> {
-  // code is now the random pairing code (primary key), session_id is separate
-  await getDB().insert(tables.pairingCodes).values({ code, login, session_id: code, lastAccessedAt: now })
-    .onConflictDoUpdate({ target: tables.pairingCodes.code, set: { login, session_id: code, lastAccessedAt: now } })
+export async function upsertPairing(
+  code: string,
+  login: string,
+  sessionId: string,
+  now: Date = new Date(),
+): Promise<void> {
+  // code is the random pairing code (primary key); session_id ties it to the browser session
+  await getDB().insert(tables.pairingCodes).values({ code, login, session_id: sessionId, lastAccessedAt: now })
+    .onConflictDoUpdate({ target: tables.pairingCodes.code, set: { login, session_id: sessionId, lastAccessedAt: now } })
 }
 
 /** Remove a pairing row by sessionId (browser "stop pairing" or logout). */

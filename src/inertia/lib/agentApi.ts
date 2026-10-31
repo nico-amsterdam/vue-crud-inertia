@@ -26,12 +26,12 @@ export async function removePairing(csrfToken: string | null | undefined): Promi
 }
 
 /** Tell the server which screen the user is currently on (so the agent can read it). */
-export async function syncScreen(csrfToken: string | null | undefined, screen: string): Promise<void> {
+export async function syncScreen(csrfToken: string | null | undefined, screen: string, params: Record<string, unknown> = {}): Promise<void> {
   await fetch('/agent/state', {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken ?? '' },
-    body: JSON.stringify({ navigation: { screen, params: {} } }),
+    body: JSON.stringify({ navigation: { screen, params } }),
   }).catch(() => {})
 }
 

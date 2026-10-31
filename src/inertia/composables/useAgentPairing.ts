@@ -14,11 +14,13 @@ export function useAgentPairing() {
   const { active: agentActive, start: startAgent, stop: stopAgent } = useAgentNavigation()
 
   const pairingCode = ref<string | null>(null)
+  const pairingStage = ref<'idle' | 'showing' | 'copied'>('idle') // idle = only start btn; showing = code+copy+remove; copied = remove only
 
   async function createPairingCode() {
     const code = await createPairing(page.props.csrfToken)
     if (code !== null) {
       pairingCode.value = code
+      pairingStage.value = 'showing'
       startAgent()
     }
   }
@@ -39,16 +41,20 @@ export function useAgentPairing() {
       document.execCommand('copy')
       document.body.removeChild(ta)
     }
+    pairingCode.value = null
+    pairingStage.value = 'copied'
   }
 
   async function removePairingCode() {
     await removePairing(page.props.csrfToken)
     pairingCode.value = null
+    pairingStage.value = 'idle'
     stopAgent()
   }
 
   return {
     pairingCode,
+    pairingStage,
     agentActive,
     createPairingCode,
     copyPairingCode,

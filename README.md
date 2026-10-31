@@ -18,6 +18,8 @@
 - 🌐 **Internationalization**: Switch between English, German, Spanish and French
 - 🎨 **Self-hosted icons**: Iconify (tabler) icons pruned and bundled — no CDN needed
 - 🛡️ **Security**: Content security policy with nonces, signed cookies, fetch metadata checks, CSRF, rate limiting
+- 🤝 **Agent interface**: source-of-truth for screens/data/actions — extensible endpoint contract (`/agent/*`) with pairing code auth and full CLI support
+- 🖥️ **Agent CLI**: login via pairing code, inspect screens/data, navigate, create/edit/delete products (`bun scripts/agent-cli.ts`)
 - 🚀 **Ready to launch**: Skip the scaffolding. Get straight to implementing your business ideas
 
 ## Wireframe
@@ -25,6 +27,9 @@
 ```text
 +-------------------------------------------------------------+
 | Vue CRUD Inertia       ☼☽      [User] [Sign Out] [Lang ▼]   |
++-------------------------------------------------------------+
+| [Start AI agent pairing] [Stop pairing]                     |
+| Pairing code: XXXXXXXX Copy                                 |
 +-------------------------------------------------------------+
 | [+ Add product]                                 [↻ Refresh] |
 | Search: [_________________________] (updates as you type)   |
@@ -41,20 +46,38 @@
 
 ## About this project
 
-Rebuild of this [Vue CRUD Nuxt application](https://github.com/nico-amsterdam/vue-crud-nuxt) with [Inertia](https://inertiajs.com/), [Vue 3](https://vuejs.org/), [Hono](https://hono.dev/) and [Bun](https://bun.com/), with the option to deploy it on Cloudflare, so everything can run on the edge in the cloud.
+Application template with [Inertia](https://inertiajs.com/), [Vue 3](https://vuejs.org/), [Hono](https://hono.dev/) and [Bun](https://bun.com/), with the option to deploy it on Cloudflare, so everything can run on the edge in the cloud. A commandline interface (CLI) allows you to connect your own AI agent and share a session, navigate the app, and read/edit/add/delete rows with the same validations as via the UI.
+
+You can [use this project](https://github.com/new?template_name=vue-crud-nuxt&template_owner=nico-amsterdam) as a starter.
 
 There is a demo on https://vue-inertia-crud.nico-amsterdam.workers.dev/. Login with your Google or GitHub account.
 
-The server-side rendered sibling of this project is [bun-htmx-crud](https://github.com/nico-amsterdam/bun-htmx-crud) (HTMX + Elysia). This project keeps the same features and security model, but with a Vue 3 client. Advantages of this project are the Vue ecosystem, and it is also easier to add custom (reactive) client-side code.
+Vue makes it easy to add custom (reactive) client-side code, and comes with a rich ecosystem.
 
 Inertia sits between the router and the frontend: the server stays in charge of routes and data, and ships page props to Vue components. You get single-page app navigation without building and maintaining a separate JSON API.
-
-You can use this project as a starter for your Inertia application with authentication.
-Git clone this repository, or download the source from GitHub.
 
 [SQLite](https://www.sqlite.org/index.html) is the central database. More specifically [Cloudflare D1](https://developers.cloudflare.com/d1/worker-api/d1-database/).
 D1 is a managed database with automatic backups (Time Travel).
 It is great for most CRUD applications. There are a few limitations; D1 has a maximum size of 10 GB per instance (5 GB in the free plan) and it doesn't support transactions with multiple steps, though it does support atomic batch operations.
+
+## Agent interface (pairing code + CLI)
+
+An external agent can read and drive the UI **as the logged-in user**:
+
+1. In the browser, click **Start agent pairing** → the page shows a pairing code (also copyable to clipboard). This code is stored with the user's login.
+2. Authenticate from outside using that code: `bun scripts/agent-cli.ts login --pairing-code <code>`.
+3. Inspect and mutate:
+   - `bun scripts/agent-cli.ts screen` — current screen, its `params`, required `context` keys and route
+   - `bun scripts/agent-cli.ts data` — real objects for the current screen (products / one product)
+   - `bun scripts/agent-cli.ts screens` — the screen registry with context requirements
+   - `bun scripts/agent-cli.ts navigate products/edit '{"id":1}'` — route the browser UI
+   - `bun scripts/agent-cli.ts create '{"productName":"X","description":"Y","price":9.99}'`
+   - `bun scripts/agent-cli.ts edit 1 '{"productName":"X","description":"Y","price":19.99}'`
+   - `bun scripts/agent-cli.ts delete 1`
+   - `bun scripts/agent-cli.ts logout`
+4. In the browser, click **Remove pairing code** (or log out) to revoke.
+
+Under the hood the UI polls `/agent/navigate` while pairing is actively syncing (only between "Start agent pairing" and "Remove pairing code"), so the agent can move the user’s browser, and it continuously reports the current screen so the agent can ask "what does the user see?". The pairing endpoints reuse `/agent/*` auth and CSRF protection from the template's `src/server.ts`.
 
 ## Directory structure
 
@@ -115,8 +138,8 @@ pruned icon set in `src/generated/`. If those files are missing (for example aft
 `src/generated/`), run `bun generate` before `bun test` or `bun typecheck`.
 
 `bun migrate:create` generates your initial migration from `src/db/schema.ts`.
-`bun migrate:dev` applies it to the local database. 
-Commit both `migrations/` and your `wrangler.jsonc` in your own repository. 
+`bun migrate:dev` applies it to the local database.
+Commit both `migrations/` and your `wrangler.jsonc` in your own repository.
 After changing `src/db/schema.ts`, run `bun migrate:create` again and commit the generated migration.
 
 ## Setup Google and GitHub authentication
@@ -200,7 +223,6 @@ set; running the `secret:*` commands above creates a new deployment with them.
 - OpenID connect (OIDC) is a very thin layer around OAuth2
 - This application uses signed session cookies; the cookies can be read with the browser devtools, but modifying them to login as a different user will not succeed, because they are digitally signed.
 - The session cookies are bound to the user agent and IP address of the visitor (normalized), so a stolen cookie does not work from another context.
-- The session cookies have a session id. The session id is currently not used, because the server doesn't keep session information. As a result, the sessions do not timeout.
 - Although they are session cookies, most browsers by default do not delete session cookies when the tab or the browser is closed. In principle the window.unload event could be used clean up the session cookies, but with OAuth2 this doesn't provide more security; see next bullet point
 - Google/GitHub OAuth2 can be used as an identity provider (what I like), but it also provides single sign on (what I don't like). There is no good way to only log out of the application, and expect that they must enter credentials again on relogin. I could do a Federated/Single Logout, but that means for example for the Google users that they will need to relogin for Gmail and other google services. The SSO sessions are long lasting sessions.
 - I have configured the login url to always prompt for consent (so it does not automatically redirect back when there is still a valid SSO session and permissions where already granted by the user), but it is very easy to remove this from the url.
