@@ -92,23 +92,23 @@ watch(darkmode, (value) => {
             <a href="/auth/login" class="btn btn-default logout">➜] {{ t('Log out') }}</a>
           </span>
         </span>
+        <div class="agent-pairing">
+          <template v-if="pairingStage === 'idle'">
+            <button class="btn btn-default btn-xs" type="button" @click="createPairingCode">{{ t('Start AI agent pairing') }}</button>
+          </template>
+          <template v-if="pairingStage === 'showing'">
+            <span>
+              <span class="text">{{ pairingCode }}</span>
+            </span>
+            <button class="btn btn-default btn-xs" type="button" @click="copyPairingCode">{{ t('Copy') }}</button>
+            <button class="btn btn-default btn-xs" type="button" @click="removePairingCode" :disabled="!agentActive">{{ t('Stop pairing') }}</button>
+          </template>
+          <template v-if="pairingStage === 'copied'">
+            <button class="btn btn-default btn-xs" type="button" @click="removePairingCode" :disabled="!agentActive">{{ t('Stop pairing') }}</button>
+          </template>
+        </div>
       </div>
     </header>
-    <div class="agent-pairing">
-      <template v-if="pairingStage === 'idle'">
-        <button class="btn btn-default btn-xs" type="button" @click="createPairingCode">{{ t('Start AI agent pairing') }}</button>
-      </template>
-      <template v-if="pairingStage === 'showing'">
-        <span>
-          <span class="text">{{ pairingCode }}</span>
-        </span>
-        <button class="btn btn-default btn-xs" type="button" @click="copyPairingCode">{{ t('Copy') }}</button>
-        <button class="btn btn-default btn-xs" type="button" @click="removePairingCode" :disabled="!agentActive">{{ t('Stop pairing') }}</button>
-      </template>
-      <template v-if="pairingStage === 'copied'">
-        <button class="btn btn-default btn-xs" type="button" @click="removePairingCode" :disabled="!agentActive">{{ t('Stop pairing') }}</button>
-      </template>
-    </div>
     <div class="flash flash-success" :class="{ 'flash--visible': flashVisible && flashSuccess }" role="status">
       <span>{{ flashSuccess }}</span>
       <button type="button" class="flash-dismiss" :aria-label="t('Dismiss')" @click="dismissFlash">×</button>
@@ -229,7 +229,7 @@ body.dark .flash-success {
 }
 
 .agent-pairing button {
-  margin: 5px 5px 0 0
+  margin: 5px 5px 5px 0
 }
 
 .agent-pairing .text {

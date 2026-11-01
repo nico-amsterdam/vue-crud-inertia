@@ -27,9 +27,7 @@
 ```text
 +-------------------------------------------------------------+
 | Vue CRUD Inertia       ☼☽      [User] [Sign Out] [Lang ▼]   |
-+-------------------------------------------------------------+
-| [Start AI agent pairing] [Stop pairing]                     |
-| Pairing code: XXXXXXXX Copy                                 |
+| [Start AI agent pairing]                                    |
 +-------------------------------------------------------------+
 | [+ Add product]                                 [↻ Refresh] |
 | Search: [_________________________] (updates as you type)   |

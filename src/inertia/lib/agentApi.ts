@@ -6,23 +6,36 @@
 
 /** Create (or refresh) a pairing code for the current browser session. */
 export async function createPairing(csrfToken: string | null | undefined): Promise<string | null> {
-  const res = await fetch('/agent/pairing/create', {
-    method: 'POST',
-    credentials: 'include',
-    headers: { 'X-CSRF-Token': csrfToken ?? '' },
-  })
-  if (!res.ok) return null
-  const d = await res.json() as { code?: string | null }
-  return d.code ?? null
+  try {
+    const res = await fetch('/agent/pairing/create', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'X-CSRF-Token': csrfToken ?? '' },
+    })
+    if (!res.ok) return null
+    const d = await res.json() as { code?: string | null }
+    return d.code ?? null
+  } catch (e) {
+    // Network error (no connectivity) — tell Inertia so the global listener can show the dialog.
+    // Dispatch on document, matching the listener in VueCrud.vue: document.addEventListener('inertia:networkError', onNetworkError)
+    document.dispatchEvent(new Event('inertia:networkError'))
+    return null
+  }
 }
 
 /** Remove the pairing code for the current browser session. */
 export async function removePairing(csrfToken: string | null | undefined): Promise<void> {
-  await fetch('/agent/pairing/remove', {
-    method: 'DELETE',
-    credentials: 'include',
-    headers: { 'X-CSRF-Token': csrfToken ?? '' },
-  })
+  try {
+    await fetch('/agent/pairing/remove', {
+      method: 'DELETE',
+      credentials: 'include',
+      headers: { 'X-CSRF-Token': csrfToken ?? '' },
+    })
+  } catch (e) {
+    // Network error (no connectivity) — tell Inertia so the global listener can show the dialog.
+    // Dispatch on document, matching the listener in VueCrud.vue: document.addEventListener('inertia:networkError', onNetworkError)
+    document.dispatchEvent(new Event('inertia:networkError'))
+  }
 }
 
 /** Tell the server which screen the user is currently on (so the agent can read it). */
