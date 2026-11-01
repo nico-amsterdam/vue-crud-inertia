@@ -1,6 +1,5 @@
 import type { Context } from 'hono'
-import type { ProductErrorsType } from '@/types/product'
-import type { ProductInput } from './store'
+import type { ProductErrorsType, ProductBaseType } from '@/types/product'
 import { t } from '@/i18n/request'
 
 /** Maximum product name length (shared by the form, validation and the search clamp). */
@@ -19,13 +18,15 @@ export function translateFieldErrors(c: Context, errors: ProductErrorsType): Pro
   return translated
 }
 
-export function validateProduct(payload: unknown): { valid: true; data: ProductInput } | { valid: false; errors: ProductErrorsType } {
+export function validateProduct(payload: unknown): { valid: true; data: ProductBaseType } | { valid: false; errors: ProductErrorsType } {
   const errors: ProductErrorsType = {}
   const input = (typeof payload === 'object' && payload !== null ? payload : {}) as Record<string, unknown>
   const productName = typeof input.productName === 'string' ? input.productName.trim() : ''
   const description = typeof input.description === 'string' ? input.description.trim() : ''
   const rawPrice = input.price
+  const rawModifiedAt = input.modifiedAt
   let price: number | null = null
+  let modifiedAt: Date | null = null
 
   if (!productName) errors.productName = 'Product name is required'
   else if (productName.length > MAX_NAME_LENGTH) errors.productName = 'Product name must be at most 20 characters'
@@ -51,14 +52,30 @@ export function validateProduct(payload: unknown): { valid: true; data: ProductI
     }
   }
 
-  if (errors.productName || errors.description || errors.price) return { valid: false, errors }
-
-  return {
-    valid: true,
-    data: {
-      productName,
-      description,
-      price,
-    },
+  // Validate modifiedAt: accept Date objects or valid ISO date strings.
+  // Invalid date strings produce an error; valid ones are converted to Date.
+  if (rawModifiedAt !== null && rawModifiedAt !== undefined) {
+    if (rawModifiedAt instanceof Date) {
+      modifiedAt = rawModifiedAt
+    } else if (typeof rawModifiedAt === 'string') {
+      const parsed = new Date(rawModifiedAt)
+      if (isNaN(parsed.getTime())) {
+        errors.modifiedAt = 'modifiedAt must be a valid date'
+      } else {
+        modifiedAt = parsed
+      }
+    } else {
+      errors.modifiedAt = 'modifiedAt must be a Date or ISO date string'
+    }
   }
+
+  if (errors.productName || errors.description || errors.price || errors.modifiedAt) return { valid: false, errors }
+
+  const data: ProductBaseType = {
+    productName,
+    description,
+    price,
+    modifiedAt,
+  }
+  return { valid: true, data }
 }

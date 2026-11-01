@@ -41,7 +41,7 @@ describe('toProduct', () => {
       productName: 'Bread',
       description: 'Fresh',
       price: 12.34,
-      modifiedAt: '2026-01-02T03:04:05.000Z',
+      modifiedAt: new Date('2026-01-02T03:04:05.000Z'),
     })
   })
 

@@ -2,7 +2,7 @@ export type ProductBaseType = {
   productName: string
   description: string
   price: number | null
-  modifiedAt: Date | string | null
+  modifiedAt: Date | null
 }
 
 export type ProductType = { id: number } & ProductBaseType
@@ -12,4 +12,5 @@ export type ProductErrorsType = {
   productName?: string
   description?: string
   price?: string
+  modifiedAt?: string
 }

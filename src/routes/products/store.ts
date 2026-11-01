@@ -20,7 +20,7 @@ export function toProduct(dbProduct: DBProduct): ProductType {
     productName: dbProduct.name,
     description: dbProduct.description,
     price: dbProduct.price === null ? null : dbProduct.price / 100,
-    modifiedAt: dbProduct.modifiedAt ? new Date(dbProduct.modifiedAt).toISOString() : null,
+    modifiedAt: dbProduct.modifiedAt ? new Date(dbProduct.modifiedAt) : null,
   }
 }
 
@@ -76,11 +76,10 @@ export function priceToCents(price: number | null): number | null {
 
 /** The validated fields both HTTP routes and the agent routes write
  *  (validateProduct().data — without modifiedAt, which updateProduct stamps). */
-export type ProductInput = Pick<ProductBaseType, 'productName' | 'description' | 'price'>
 
 /** Insert a new product. Throws on constraint violations (e.g. duplicate name) —
  *  handlers turn that into their own error presentation. */
-export async function createProduct(input: ProductInput, createdBy: string): Promise<DBProduct | undefined> {
+export async function createProduct(input: ProductBaseType, createdBy: string): Promise<DBProduct | undefined> {
   const [row] = await getDB()
     .insert(tables.products)
     .values({
@@ -102,7 +101,7 @@ export async function createProduct(input: ProductInput, createdBy: string): Pro
  */
 export async function updateProduct(
   id: number,
-  input: ProductInput,
+  input: ProductBaseType,
   modifiedBy: string,
   verifyModifiedAt?: Date | null,
 ): Promise<DBProduct[]> {

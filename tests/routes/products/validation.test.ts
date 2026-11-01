@@ -9,8 +9,7 @@ describe('validateProduct', () => {
       expect(result.data.productName).toBe('Bread')
       expect(result.data.description).toBe('Fresh')
       expect(result.data.price).toBe(2.5)
-      // Validation sets no timestamp: the store stamps modifiedAt on write.
-      expect('modifiedAt' in result.data).toBe(false)
+      expect(result.data.modifiedAt).toBeNull()
     }
   })
 
