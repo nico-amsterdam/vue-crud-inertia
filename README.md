@@ -63,7 +63,7 @@ It is great for most CRUD applications. There are a few limitations; D1 has a ma
 An external agent can read and drive the UI **as the logged-in user**:
 
 1. In the browser, click **Start agent pairing** → the page shows a pairing code (also copyable to clipboard). This code is stored with the user's login.
-2. Authenticate from outside using that code: `bun scripts/agent-cli.ts login --pairing-code <code>`.
+2. Authenticate from outside using that code: `bun scripts/agent-cli.ts login --pairing-code <code>`. Login immediately probes `GET /agent/screen` to verify the connection — wrong or expired codes fail right away (and the saved session file is removed).
 3. Inspect and mutate:
    - `bun scripts/agent-cli.ts screen` — current screen, its `params`, required `context` keys and route
    - `bun scripts/agent-cli.ts data` — real objects for the current screen (products / one product)
@@ -76,6 +76,10 @@ An external agent can read and drive the UI **as the logged-in user**:
 4. In the browser, click **Remove pairing code** (or log out) to revoke.
 
 Under the hood the UI polls `/agent/navigate` while pairing is actively syncing (only between "Start agent pairing" and "Remove pairing code"), so the agent can move the user’s browser, and it continuously reports the current screen so the agent can ask "what does the user see?". The pairing endpoints reuse `/agent/*` auth and CSRF protection from the template's `src/server.ts`.
+
+Tip: set `AGENT_PRODUCTS_DISABLED=1` in .env to forbid the agent product write API. Calls to
+`POST/PATCH/DELETE /agent/products*` (new/edit/delete) then return 403; read-only agent endpoints
+(`screen`, `data`, `navigate`, …) keep working.
 
 ## Directory structure
 

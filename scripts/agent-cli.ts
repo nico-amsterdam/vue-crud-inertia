@@ -52,7 +52,24 @@ switch (cmd) {
       process.exit(1)
     }
     saveSession(s)
-    console.log('Pairing code saved')
+    console.log('Pairing code saved — testing the connection (GET /agent/screen)…')
+    try {
+      const res = await fetch(new URL('/agent/screen', baseUrl()).toString(), { headers: headers() })
+      if (!res.ok) {
+        const text = (await res.text()).trim()
+        // 401 means the code was rejected (invalid/unread/expired) — a saved
+        // broken code would only confuse later calls, so drop the session file.
+        if (res.status === 401) clearSession()
+        console.error(`Connection test failed (HTTP ${res.status}): ${text}`)
+        process.exit(1)
+      }
+      const screen = await res.json().catch(() => null)
+      console.log('Connection OK — the paired app reported:')
+      console.log(JSON.stringify(screen, null, 2))
+    } catch {
+      console.error(`Connection test failed: the app is not reachable at ${baseUrl()} (is it running? did you need --base-url?)`)
+      process.exit(1)
+    }
     break
   }
   case 'logout':
@@ -71,15 +88,15 @@ switch (cmd) {
   case 'navigate':
     await req('POST', '/agent/navigate', { screen: args[0], params: args[1] ? JSON.parse(args[1]) : {} })
     break
-  case 'create':
+  case 'product_create':
     await req('POST', '/agent/products', JSON.parse(args[0] ?? '{}'))
     break
-  case 'edit':
+  case 'product_edit':
     await req('PATCH', `/agent/products/${args[0]}`, JSON.parse(args[1] ?? '{}'))
     break
-  case 'delete':
+  case 'product_delete':
     await req('DELETE', `/agent/products/${args[0]}`)
     break
   default:
-    console.log(`Commands: login, logout, screen, data, screens, navigate, create, edit, delete`)
+    console.log(`Commands: login, logout, screen, data, screens, navigate, product_create, product_edit, product_delete`)
 }

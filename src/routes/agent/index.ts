@@ -16,7 +16,7 @@ import {
   touchPairing,
   upsertPairing,
 } from './store'
-import products, { type AgentScreenMeta, PRODUCT_SCREENS, loadProductScreenData } from './products'
+import products, { PRODUCT_SCREENS, loadProductScreenData } from './products'
 
 export { AGENT_HEARTBEAT_INTERVAL_MS, AGENT_IDLE_TIMEOUT_MS }
 
@@ -28,6 +28,9 @@ export const AGENT_PAIRING_HEADER = 'x-pairing-code'
 export const DEV_PAIRING_SESSION_ID = 'dev-local'
 
 const MUTATING_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE']
+
+/** Metadata describing an agent screen in the `SCREENS` mapping. */
+export type AgentScreenMeta = { route: string; context: string[] }
 
 export const SCREENS: Record<string, AgentScreenMeta> = {
   ...PRODUCT_SCREENS,

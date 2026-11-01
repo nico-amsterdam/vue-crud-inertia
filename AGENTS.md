@@ -62,14 +62,14 @@ Protocol notes:
 
 ## Agent interface (pairing code + CLI)
 
-- External agents act **as the user** through a pairing code: the UI's "Start agent pairing" button shows the session id and stores `pairing_codes.code → user.login`; "Remove pairing code" deletes it, and `clearSession` (logout) also removes the row.
+- External agents act **as the user** through a pairing code: the UI's "Start AI agent pairing" button shows the pairing code and stores `pairing_codes.code → user.login, session-id`; "Stop pairing" deletes it, and `clearSession` (logout) also removes the row.
 - `GET /agent/screen` reports the user's current screen + params (the Inertia layout syncs navigation on every visit; `/products/:id/(edit|delete)` extracts the numeric id from the URL), `context` (the keys the agent must supply) and the matching route
 - `GET /agent/data` returns **real objects**, never HTML/JSON-in-a-string: the current page of products, or the single product for edit/delete
-- `POST /agent/navigate` + `GET /agent/navigate` move the UI: the layout starts polling only between "Start agent pairing" and "Stop agent pairing"
+- `POST /agent/navigate` + `GET /agent/navigate` move the UI: the layout starts polling only between "Start agent pairing" and "Stop pairing"
 - CRUD tools for agents: `POST /agent/products`, `PATCH /agent/products/:id`, `DELETE /agent/products/:id` (validation reuses `src/routes/products/*`)
 - Agent requests authenticate **without a browser session** via header `X-Pairing-Code: <code>`; `resolveAgentUser` maps the code to the owner's login and app state is keyed `key:<login>` so browser and agent share per-user state (`app_state` table)
 - Auth routes for pairing are `.use('/agent/*', requireAuth)` in `src/server.ts`; pairing create/remove require the browser session's `X-CSRF-Token`
-- CLI: `bun scripts/agent-cli.ts` — `login --pairing-code <code>`, `logout`, `screen`, `data`, `screens`, `navigate <screen> [paramsJson]`, `create <json>`, `edit <id> <json>`, `delete <id>`; session state persists in `.agent-session.json`
+- CLI: `bun scripts/agent-cli.ts` — `login --pairing-code <code>`, `logout`, `screen`, `data`, `screens`, `navigate <screen> [paramsJson]`, `product_create <json>`, `product_edit <id> <json>`, `product_delete <id>`; session state persists in `.agent-session.json`
 
 ## Database
 

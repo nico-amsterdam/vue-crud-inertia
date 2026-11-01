@@ -1,14 +1,12 @@
 import { Hono } from 'hono'
 import type { AppEnv } from '@/types/env'
+import type { AgentScreenMeta } from './index'
 import type { ProductType } from '@/types/product'
 import { validateProduct } from '@/routes/products/validation'
 import { createProduct, deleteProduct, getProductById, loadProductsPage, productNameExists, toProduct, updateProduct } from '@/routes/products/store'
 
 /** Fallback "user" attribution for product writes done through the agent API. */
 export const DEFAULT_AGENT_USER = 'agent'
-
-/** Metadata describing an agent screen in the `SCREENS` mapping. */
-export type AgentScreenMeta = { route: string; context: string[] }
 
 /** The agent screens showing product data. */
 export const PRODUCT_SCREENS: Record<string, AgentScreenMeta> = {
@@ -42,7 +40,16 @@ export async function loadProductScreenData(
   return null
 }
 
+/** `AGENT_PRODUCTS_DISABLED=1` in .env switches off the agent product write API. */
+export const isAgentProductsDisabled = (): boolean => process.env.AGENT_PRODUCTS_DISABLED === '1'
+
 const products = new Hono<AppEnv>()
+  .use('*', async (c, next) => {
+    if (isAgentProductsDisabled()) {
+      return c.json({ error: 'Agent product API is disabled (AGENT_PRODUCTS_DISABLED=1)' }, 403)
+    }
+    await next()
+  })
   .post('/', async (c) => {
     const body = await c.req.json().catch(() => null)
     if (!body) return c.json({ error: 'Invalid body' }, 400)
