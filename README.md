@@ -26,7 +26,7 @@
 
 ```text
 +-------------------------------------------------------------+
-| Vue CRUD Inertia       ☼☽      [User] [Sign Out] [Lang ▼]   |
+| Vue CRUD Inertia        [Lang ▼]  ☼☽      [User] [Sign Out] |
 | [Start AI agent pairing]                                    |
 +-------------------------------------------------------------+
 | [+ Add product]                                 [↻ Refresh] |
@@ -62,7 +62,7 @@ It is great for most CRUD applications. There are a few limitations; D1 has a ma
 
 An external agent can read and drive the UI **as the logged-in user**:
 
-1. In the browser, click **Start agent pairing** → the page shows a pairing code (also copyable to clipboard). This code is stored with the user's login.
+1. In the browser, click **Start UI agent pairing** → the page shows a pairing code (also copyable to clipboard). This code is stored with the user's login.
 2. Authenticate from outside using that code: `bun scripts/agent-cli.ts login --pairing-code <code>`. Login immediately probes `GET /agent/screen` to verify the connection — wrong or expired codes fail right away (and the saved session file is removed).
 3. Inspect and mutate:
    - `bun scripts/agent-cli.ts screen` — current screen, its `params`, required `context` keys and route
@@ -74,9 +74,9 @@ An external agent can read and drive the UI **as the logged-in user**:
    - `bun scripts/agent-cli.ts edit 1 '{"productName":"X","description":"Y","price":19.99}'` — `edit` (PATCH) is a complete replacement: send name, description **and** price every time; omitted fields clear to their empty defaults
    - `bun scripts/agent-cli.ts delete 1`
    - `bun scripts/agent-cli.ts logout`
-4. In the browser, click **Remove pairing code** (or log out) to revoke.
+4. In the browser, click **Stop pairing** (or log out) to revoke.
 
-Under the hood the UI polls `/agent/navigate` while pairing is actively syncing (only between "Start agent pairing" and "Remove pairing code"), so the agent can move the user’s browser, and it continuously reports the current screen so the agent can ask "what does the user see?". The pairing endpoints reuse `/agent/*` auth and CSRF protection from the template's `src/server.ts`.
+Under the hood the UI polls `/agent/navigate` while pairing is actively syncing (only between "Start UI agent pairing" and "Stop pairing"), so the agent can move the user’s browser, and it continuously reports the current screen so the agent can ask "what does the user see?". The pairing endpoints reuse `/agent/*` auth and CSRF protection from the template's `src/server.ts`.
 
 Tip: `AGENT_ENABLED` in .env is an allow-list of agent capabilities (comma-separated). Unset
 (= default) enables everything; when set, calls to anything not in the list answer 403 — capability

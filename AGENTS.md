@@ -67,7 +67,7 @@ Protocol notes:
 - External agents act **as the user** through a pairing code: the UI's "Start AI agent pairing" button shows the pairing code and stores `pairing_codes.code → user.login, session-id`; "Stop pairing" deletes it, and `clearSession` (logout) also removes the row.
 - `GET /agent/screen` reports the user's current screen + params (the Inertia layout syncs navigation on every visit; `/products/:id/(edit|delete)` extracts the numeric id from the URL), `context` (the keys the agent must supply) and the matching route
 - `GET /agent/data` returns **real objects**, never HTML/JSON-in-a-string: the current page of products, or the single product for edit/delete
-- `POST /agent/navigate` + `GET /agent/navigate` move the UI: the layout starts polling only between "Start agent pairing" and "Stop pairing"
+- `POST /agent/navigate` + `GET /agent/navigate` move the UI: the layout starts polling only between "Start UI agent pairing" and "Stop pairing"
 - CRUD tools for agents: `POST /agent/products`, `PATCH /agent/products/:id`, `DELETE /agent/products/:id` (validation reuses `src/routes/products/*`)
 - Agent requests authenticate **without a browser session** via header `X-Pairing-Code: <code>`; `resolveAgentUser` maps the code to the owner's login and app state is keyed `key:<login>` so browser and agent share per-user state (`app_state` table)
 - Auth routes for pairing are `.use('/agent/*', requireAuth)` in `src/server.ts`; pairing create/remove require the browser session's `X-CSRF-Token`

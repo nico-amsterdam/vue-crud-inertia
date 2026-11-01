@@ -40,6 +40,15 @@ function syncScreen() {
   syncAgentScreen(page.props.csrfToken, screen, params)
 }
 
+/*
+ * Functions
+ */
+
+async function startAgentPairing() {
+  await createPairingCode()
+  syncScreen()
+}
+
 function toggleDark() {
   darkmode.value = !darkmode.value
 }
@@ -99,7 +108,7 @@ watch(darkmode, (value) => {
         </span>
         <div v-if="agentEnabled" class="agent-pairing">
           <template v-if="pairingStage === 'idle'">
-            <button class="btn btn-default btn-xs" type="button" @click="createPairingCode">{{ t('Start AI agent pairing') }}</button>
+            <button class="btn btn-default btn-xs" type="button" @click="startAgentPairing">{{ t('Start AI agent pairing') }}</button>
           </template>
           <template v-if="pairingStage === 'showing'">
             <span>
