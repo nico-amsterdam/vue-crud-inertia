@@ -40,6 +40,17 @@ export const SCREENS: Record<string, AgentScreenMeta> = {
  * Functions
  */
 
+/** `AGENT_DISABLED=1` switches the whole agent feature off: `/agent/*` answers
+ *  404 (routed as if it never existed) and the UI hides its agent section. */
+export const isAgentDisabled = (): boolean => process.env.AGENT_DISABLED === '1'
+
+/** Runs before requireAgentAuth on /agent/*, so a disabled agent feature
+ *  answers 404 without revealing auth internals (codes, pairing state). */
+export const agentEnabledGuard: MiddlewareHandler<AppEnv> = async (c, next) => {
+  if (isAgentDisabled()) return c.text('Not Found', 404)
+  await next()
+}
+
 export const requireAgentAuth: MiddlewareHandler<AppEnv> = async (c, next) => {
   if (process.env.AUTH_DISABLED === '1' && process.env.NODE_ENV !== 'production') {
     c.set('authUser', { login: 'dev:local', name: 'Local Dev', email: '', avatar_url: '' })

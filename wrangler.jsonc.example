@@ -51,7 +51,10 @@
        // Unset = all agent features enabled; when set, anything not listed
        // answers 403. 'products' covers the agent product write API
        // (POST/PATCH/DELETE /agent/products*). Local dev overrides this via .env.
-       // "AGENT_ENABLED": "products"
+       // "AGENT_ENABLED": "products",
+       // Master switch = whole agent feature off: /agent/* answers 404 and the
+       // UI hides its agent-pairing section. Local dev overrides this via .env.
+       // "AGENT_DISABLED": "1"
     },
 	"keep_vars": true,
 	/**

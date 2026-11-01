@@ -16,8 +16,11 @@ import type { UserType } from '@/routes/auth/common'
 const locale = useLocale()
 const t = useT()
 const { message: flashSuccess, visible: flashVisible, dismiss: dismissFlash } = useFlashSuccess()
-const page = usePage<{ authUser?: UserType | null, csrfToken?: string | null }>()
+const page = usePage<{ authUser?: UserType | null, csrfToken?: string | null, agentEnabled?: boolean }>()
 const authUser = computed(() => page.props.authUser ?? null)
+// Shared prop comes from server.ts (AGENT_DISABLED=1 -> false). Default true so
+// share() payloads that predate the flag keep showing the agent section.
+const agentEnabled = computed(() => page.props.agentEnabled !== false)
 const darkmode = ref(false)
 const networkErrDialog = ref<HTMLDialogElement | null>(null)
 const { pairingCode, pairingStage, agentActive, createPairingCode, copyPairingCode, removePairingCode } = useAgentPairing()
@@ -27,6 +30,8 @@ const { pairingCode, pairingStage, agentActive, createPairingCode, copyPairingCo
  */
 
 function syncScreen() {
+  // Agent feature switched off: no /agent/state calls (they would 404).
+  if (!agentEnabled.value) return
   const comp = page.component
   const screen = comp.endsWith('/index') ? comp.slice(0, -6) : comp
   // Keep the :id parameter for edit/delete screens so agents can read it back.
@@ -92,7 +97,7 @@ watch(darkmode, (value) => {
             <a href="/auth/login" class="btn btn-default logout">➜] {{ t('Log out') }}</a>
           </span>
         </span>
-        <div class="agent-pairing">
+        <div v-if="agentEnabled" class="agent-pairing">
           <template v-if="pairingStage === 'idle'">
             <button class="btn btn-default btn-xs" type="button" @click="createPairingCode">{{ t('Start AI agent pairing') }}</button>
           </template>

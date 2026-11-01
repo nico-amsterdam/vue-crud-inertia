@@ -70,6 +70,7 @@ Validation failures return `400 {"errors": {...}}` before reaching SQLite confli
 
 ## Conventions and gotchas
 
+- `AGENT_DISABLED=1` (server env) switches the whole agent feature off: every `/agent/*` endpoint answers `404` and the UI hides its pairing section. If every call suddenly 404s, that flag is set — ask the user, don't retry.
 - The CLI exits non-zero with `status, body` on any error; script around that, and treat a 401 "pairing window expired" as "ask the user to re-pair".
 - `.agent-session.json` lives in the repo root — never commit nor echo its contents on a shared machine; `logout` deletes it.
 - Deleting the browser session (logout link), removing the pairing in the UI, or the paired user logging out invalidates the code immediately (row deleted server-side).

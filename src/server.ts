@@ -14,7 +14,7 @@ import { allowRequest } from './lib/security'
 import { DEV_FLASH_SECRET, requireSecret } from './lib/secrets'
 import { authController, csrfProtect, requireAuth } from './routes/auth'
 import products from './routes/products'
-import agent, { requireAgentAuth } from './routes/agent'
+import agent, { agentEnabledGuard, isAgentDisabled, requireAgentAuth } from './routes/agent'
 import { errorPage, renderNotFound } from './routes/errors'
 
 const isDev = process.env.NODE_ENV !== 'production'
@@ -169,6 +169,8 @@ const { middleware } = createInertia({
     locale: { lang: getContentLanguage(c) },
     authUser: c.get('authUser') ?? null,
     csrfToken: c.get('csrfToken') ?? '',
+    // False hides the layout's agent-pairing section (AGENT_DISABLED=1).
+    agentEnabled: !isAgentDisabled(),
   }),
   renderHtml: async (ctx) => {
     const html = await viteHtmlRenderer(ctx)
@@ -193,7 +195,10 @@ export const app = base
   // '.use("/products", ...)' matches the exact path only.
   .use('/products/*', requireAuth, csrfProtect)
   .route('/products', products)
-  .use('/agent/*', requireAgentAuth)
+  // '/agent/*': the feature switch runs first so AGENT_DISABLED=1 answers 404
+  // on every agent endpoint without touching auth; when enabled requireAgentAuth
+  // takes over (pairing code / session cookie).
+  .use('/agent/*', agentEnabledGuard, requireAgentAuth)
   .route('/agent', agent)
 
 /*

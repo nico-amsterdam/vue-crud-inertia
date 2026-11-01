@@ -83,6 +83,10 @@ Tip: `AGENT_ENABLED` in .env is an allow-list of agent capabilities (comma-separ
 `products` covers the agent product write API (`POST/PATCH/DELETE /agent/products*`, i.e.
 new/edit/delete); read-only agent endpoints (`screen`, `data`, `navigate`, …) are unaffected.
 
+Tip: `AGENT_DISABLED=1` in .env switches the whole agent feature off: every `/agent/*` endpoint
+answers 404 (the routes are effectively turned off) **and** the UI hides its agent-pairing section
+(the layout stops reporting screens, too). Takes precedence over `AGENT_ENABLED`.
+
 ## Directory structure
 
 ```text
