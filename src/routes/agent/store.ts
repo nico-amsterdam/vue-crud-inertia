@@ -7,6 +7,13 @@ export const AGENT_HEARTBEAT_INTERVAL_MS = 60_000
 /** Agents are refused when the paired browser has not polled for 5 minutes. */
 export const AGENT_IDLE_TIMEOUT_MS = 5 * 60_000
 
+/**
+ * app_state rows older than this are beyond any recovery: agent access dies
+ * after the browser misses the keep-alive for 5 minutes, so nothing can ever
+ * touch a session again. Doubled to stay safely above clock skew.
+ */
+export const APP_STATE_TTL_MS = 2 * AGENT_IDLE_TIMEOUT_MS
+
 /** Row shape returned by getPairing. */
 export type PairingRow = {
   code: string
@@ -111,4 +118,14 @@ export async function setState(key: string, value: any): Promise<void> {
   const v = JSON.stringify(value)
   await getDB().insert(tables.appState).values({ key, value: v })
     .onConflictDoUpdate({ target: tables.appState.key, set: { value: v, updatedAt: new Date() } })
+  // Opportunistic, sampled garbage collection: on roughly every 32nd write also
+  // trim app_state rows older than APP_STATE_TTL_MS (dead agent sessions). While
+  // a paired browser is active it polls every 2 s, so this runs at most about
+  // once a minute; failures are swallowed — a real write must never fail because
+  // housekeeping failed. Rows never expire "just in time": explicit re-pairing
+  // overwrites, the heartbeats above keep fresh rows alive (deletion is purely
+  // age-based), and `bun run cleanup:state` trims the rest from the command line.
+  if (Math.random() < 1 / 32) {
+    await cleanupAppState(APP_STATE_TTL_MS).catch(() => {})
+  }
 }
