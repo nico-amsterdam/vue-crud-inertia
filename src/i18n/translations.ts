@@ -81,6 +81,7 @@ const translations: Translations = {
     'Price must be a non-negative number': 'Price must be a non-negative number',
     'Price is too large': 'Price is too large',
     'Price must have at most 2 decimal places': 'Price must have at most 2 decimal places',
+    'Modified date must be valid': 'Modified date must be valid',
     'Could not create product': 'Could not create product',
     'Could not update product': 'Could not update product',
     "'{0}' is changed or removed by another user. Reopen it from the list.":
@@ -145,6 +146,7 @@ const translations: Translations = {
     'Price must be a non-negative number': 'El precio debe ser un número no negativo',
     'Price is too large': 'El precio es demasiado alto',
     'Price must have at most 2 decimal places': 'El precio debe tener como máximo 2 decimales',
+    'Modified date must be valid': 'Fecha modificada debe ser válida',
     'Could not create product': 'No se pudo crear el producto',
     'Could not update product': 'No se pudo actualizar el producto',
     "'{0}' is changed or removed by another user. Reopen it from the list.":
@@ -209,6 +211,7 @@ const translations: Translations = {
     'Price must be a non-negative number': 'Le prix doit être un nombre non négatif',
     'Price is too large': 'Le prix est trop élevé',
     'Price must have at most 2 decimal places': 'Le prix doit comporter au plus 2 décimales',
+    'Modified date must be valid': 'Date de modification valide',
     'Could not create product': 'Impossible de créer le produit',
     'Could not update product': 'Impossible de mettre à jour le produit',
     "'{0}' is changed or removed by another user. Reopen it from the list.":
@@ -273,6 +276,7 @@ const translations: Translations = {
     'Price must be a non-negative number': 'Preis muss eine nicht-negative Zahl sein',
     'Price is too large': 'Der Preis ist zu hoch',
     'Price must have at most 2 decimal places': 'Preis darf höchstens 2 Nachkommastellen haben',
+    'Modified date must be valid': 'Gültiges Änderungsdatum',
     'Could not create product': 'Produkt konnte nicht erstellt werden',
     'Could not update product': 'Produkt konnte nicht aktualisiert werden',
     "'{0}' is changed or removed by another user. Reopen it from the list.":

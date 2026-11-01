@@ -15,6 +15,7 @@ export function translateFieldErrors(c: Context, errors: ProductErrorsType): Pro
   if (errors.productName) translated.productName = t(c, errors.productName)
   if (errors.description) translated.description = t(c, errors.description)
   if (errors.price) translated.price = t(c, errors.price)
+  if (errors.modifiedAt) translated.modifiedAt = t(c, errors.modifiedAt)
   return translated
 }
 
@@ -60,12 +61,12 @@ export function validateProduct(payload: unknown): { valid: true; data: ProductB
     } else if (typeof rawModifiedAt === 'string') {
       const parsed = new Date(rawModifiedAt)
       if (isNaN(parsed.getTime())) {
-        errors.modifiedAt = 'modifiedAt must be a valid date'
+        errors.modifiedAt = 'Modified date must be valid'
       } else {
         modifiedAt = parsed
       }
     } else {
-      errors.modifiedAt = 'modifiedAt must be a Date or ISO date string'
+      errors.modifiedAt = 'Modified date must be valid'
     }
   }
 
