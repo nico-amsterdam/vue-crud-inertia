@@ -1,11 +1,12 @@
 import { Hono } from 'hono'
 import type { Context } from 'hono'
 import { render, scroll } from '@sneakylenny/inertia-hono'
-import type { ProductBaseType, ProductType } from '@/types/product'
+import type { ProductBaseType, ProductErrorsType, ProductType } from '@/types/product'
 import type { AppEnv } from '@/types/env'
 import { t } from '@/i18n/request'
 import { rateLimit } from '@/middleware/rate-limit'
 import { renderNotFound } from '@/routes/errors'
+import { setState, userStateKey } from '@/routes/agent/store'
 import {
   DEFAULT_USER,
   createProduct,
@@ -71,6 +72,30 @@ async function flashSuccess(c: Context, message: string): Promise<void> {
   await c.var.inertia.flash({ flash: { success: message } })
 }
 
+/**
+ * Remember the last form submission (new/edit) of this browser session in the
+ * shared `app_state` store, so an external agent can ask what the form sent
+ * and which errors the UI showed (read via `GET /agent/form`). `values` are
+ * the parsed fields as submitted; `errors` are the translated per-field
+ * errors returned to the client, or null after a successful submission.
+ */
+async function captureSubmission(
+  c: Context<AppEnv>,
+  screen: 'products/new' | 'products/edit',
+  id: number | null,
+  values: unknown,
+  errors: ProductErrorsType | null,
+): Promise<void> {
+  await setState(userStateKey(c.var.sessionId, 'lastSubmission'), {
+    screen,
+    id,
+    values,
+    errors: errors ?? null,
+    succeeded: errors === null,
+    at: new Date().toISOString(),
+  })
+}
+
 const app = new Hono<AppEnv>()
   .get('/', async (c) => {
     const page = readPage(c)
@@ -105,26 +130,39 @@ const app = new Hono<AppEnv>()
   .post('/', async (c) => {
     const body = await readJsonBody(c)
     if (body === null) {
-      return render(c, 'products/new', { errors: { write: t(c, 'Invalid request body') } })
+      const errors = { write: t(c, 'Invalid request body') }
+      await captureSubmission(c, 'products/new', null, {}, errors)
+      return render(c, 'products/new', { errors })
     }
 
     const result = validateProduct(body)
 
     if (!result.valid) {
-      return render(c, 'products/new', { errors: translateFieldErrors(c, result.errors) })
+      const errors = translateFieldErrors(c, result.errors)
+      await captureSubmission(c, 'products/new', null, body, errors)
+      return render(c, 'products/new', { errors })
     }
 
     if (await productNameExists(result.data.productName)) {
-      return render(c, 'products/new', { errors: { productName: t(c, 'A product with this name already exists') } })
+      const errors = { productName: t(c, 'A product with this name already exists') }
+      await captureSubmission(c, 'products/new', null, result.data, errors)
+      return render(c, 'products/new', { errors })
     }
 
     try {
       const created = await createProduct(result.data, c.var.authUser?.login ?? DEFAULT_USER)
-      if (!created) return render(c, 'products/new', { errors: { write: t(c, 'Could not create product') } })
+      if (!created) {
+        const errors = { write: t(c, 'Could not create product') }
+        await captureSubmission(c, 'products/new', null, result.data, errors)
+        return render(c, 'products/new', { errors })
+      }
+      await captureSubmission(c, 'products/new', null, result.data, null)
       await flashSuccess(c, t(c, 'Product created successfully'))
       return c.redirect('/products', 303)
     } catch {
-      return render(c, 'products/new', { errors: { write: t(c, 'Could not create product') } })
+      const errors = { write: t(c, 'Could not create product') }
+      await captureSubmission(c, 'products/new', null, result.data, errors)
+      return render(c, 'products/new', { errors })
     }
   })
   .get('/:id/edit', async (c) => {
@@ -135,6 +173,10 @@ const app = new Hono<AppEnv>()
     return render(c, 'products/edit', { product })
   })
   .patch('/:id', async (c) => {
+    // PATCH here means COMPLETE REPLACEMENT, not partial merge: the body must be
+    // the full valid product (as sent by the edit form); validateProduct applies
+    // empty defaults to omitted fields (description → '', price → null). Don't
+    // "fix" this into merge semantics without choosing a merge format first.
     const id = readId(c)
     if (id === null) return renderNotFound(c)
 
@@ -143,9 +185,11 @@ const app = new Hono<AppEnv>()
       // No usable body: re-render the form with the stored product and an error.
       const dbProduct = await getProductById(id)
       if (!dbProduct) return renderNotFound(c)
+      const errors = { write: t(c, 'Invalid request body') }
+      await captureSubmission(c, 'products/edit', id, {}, errors)
       return render(c, 'products/edit', {
         product: toProduct(dbProduct),
-        errors: { write: t(c, 'Invalid request body') },
+        errors,
       })
     }
 
@@ -164,11 +208,15 @@ const app = new Hono<AppEnv>()
 
     const result = validateProduct(body)
     if (!result.valid) {
-      return render(c, 'products/edit', { product: submittedProduct, errors: translateFieldErrors(c, result.errors) })
+      const errors = translateFieldErrors(c, result.errors)
+      await captureSubmission(c, 'products/edit', id, submittedProduct, errors)
+      return render(c, 'products/edit', { product: submittedProduct, errors })
     }
 
     if (await productNameExists(result.data.productName, id)) {
-      return render(c, 'products/edit', { product: submittedProduct, errors: { productName: t(c, 'A product with this name already exists') } })
+      const errors = { productName: t(c, 'A product with this name already exists') }
+      await captureSubmission(c, 'products/edit', id, submittedProduct, errors)
+      return render(c, 'products/edit', { product: submittedProduct, errors })
     }
 
     // Optimistic concurrency: only update if the product was not changed or removed since it was opened.
@@ -185,13 +233,18 @@ const app = new Hono<AppEnv>()
 
       if (updatedProducts.length === 0) {
         const message = t(c, "'{0}' is changed or removed by another user. Reopen it from the list.", result.data.productName)
-        return render(c, 'products/edit', { product: submittedProduct, errors: { write: message } })
+        const errors = { write: message }
+        await captureSubmission(c, 'products/edit', id, submittedProduct, errors)
+        return render(c, 'products/edit', { product: submittedProduct, errors })
       }
 
+      await captureSubmission(c, 'products/edit', id, submittedProduct, null)
       await flashSuccess(c, t(c, 'Product updated successfully'))
       return c.redirect('/products', 303)
     } catch {
-      return render(c, 'products/edit', { product: submittedProduct, errors: { write: t(c, 'Could not update product') } })
+      const errors = { write: t(c, 'Could not update product') }
+      await captureSubmission(c, 'products/edit', id, submittedProduct, errors)
+      return render(c, 'products/edit', { product: submittedProduct, errors })
     }
   })
   .get('/:id/delete', async (c) => {

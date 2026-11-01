@@ -3,7 +3,6 @@ import type { Context, MiddlewareHandler } from 'hono'
 import type { AppEnv } from '@/types/env'
 import { generateSecureRandomString, getIp } from '@/lib/security'
 import { readSession } from '@/routes/auth/common'
-import { tables, getDB} from '@/db/index'
 import {
   AGENT_HEARTBEAT_INTERVAL_MS,
   AGENT_IDLE_TIMEOUT_MS,
@@ -15,8 +14,10 @@ import {
   setState as storeSetState,
   touchPairing,
   upsertPairing,
+  userStateKey,
 } from './store'
 import products, { PRODUCT_SCREENS, loadProductScreenData } from './products'
+import { DEV_SESSION_ID } from '@/routes/auth'
 
 export { AGENT_HEARTBEAT_INTERVAL_MS, AGENT_IDLE_TIMEOUT_MS }
 
@@ -25,7 +26,6 @@ export { AGENT_HEARTBEAT_INTERVAL_MS, AGENT_IDLE_TIMEOUT_MS }
  */
 
 export const AGENT_PAIRING_HEADER = 'x-pairing-code'
-export const DEV_PAIRING_SESSION_ID = 'dev-local'
 
 const MUTATING_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE']
 
@@ -44,8 +44,8 @@ export const requireAgentAuth: MiddlewareHandler<AppEnv> = async (c, next) => {
   if (process.env.AUTH_DISABLED === '1' && process.env.NODE_ENV !== 'production') {
     c.set('authUser', { login: 'dev:local', name: 'Local Dev', email: '', avatar_url: '' })
     c.set('csrfToken', 'dev-csrf-token')
-    c.set('agentSessionId', DEV_PAIRING_SESSION_ID)
-    await touchPairing(DEV_PAIRING_SESSION_ID)
+    c.set('sessionId', DEV_SESSION_ID)
+    await touchPairing(DEV_SESSION_ID)
     return next()
   }
 
@@ -57,7 +57,7 @@ export const requireAgentAuth: MiddlewareHandler<AppEnv> = async (c, next) => {
     }
     c.set('authUser', { login: session.login, name: session.name, email: session.email, avatar_url: session.image })
     c.set('csrfToken', session.csrfToken)
-    c.set('agentSessionId', session.id)
+    c.set('sessionId', session.id)
     await touchPairing(session.id)
     return next()
   }
@@ -79,7 +79,7 @@ export const requireAgentAuth: MiddlewareHandler<AppEnv> = async (c, next) => {
       return c.json({ error: 'Pairing code is used from a different IP address' }, 401)
     }
     c.set('authUser', { login: row.login, name: '', email: '', avatar_url: '' })
-    c.set('agentSessionId', row.session_id)
+    c.set('sessionId', row.session_id)
     return next()
   }
 
@@ -87,7 +87,7 @@ export const requireAgentAuth: MiddlewareHandler<AppEnv> = async (c, next) => {
 }
 
 function userKey(c: Context, key: string): string {
-  return `${key}:${c.var.agentSessionId ?? 'anon'}`
+  return userStateKey(c.var.sessionId, key)
 }
 
 function getState(c: Context, key: string): Promise<any | null> {
@@ -130,7 +130,7 @@ const app = new Hono<AppEnv>()
   })
   .post('/pairing/create', async (c) => {
     const user = c.var.authUser
-    const sessionId = c.var.agentSessionId
+    const sessionId = c.var.sessionId
     if (!user || !sessionId) return c.json({ error: 'Not authenticated' }, 401)
     // Look up existing pairing code for this session
     const existing = await getPairingBySessionId(sessionId)
@@ -141,7 +141,7 @@ const app = new Hono<AppEnv>()
     return c.json({ code: newCode })
   })
   .delete('/pairing/remove', async (c) => {
-    const sessionId = c.var.agentSessionId
+    const sessionId = c.var.sessionId
     if (sessionId) await removePairing(sessionId)
     return c.json({ ok: true })
   })
@@ -150,6 +150,11 @@ const app = new Hono<AppEnv>()
     const nav = await getState(c, 'navigation')
     const screen = nav?.screen ?? 'products'
     return c.json({ screen, data: await loadProductScreenData(screen, nav?.params) })
+  })
+  .get('/form', async (c) => {
+    // The browser session's last new/edit form submission, captured by the
+    // products routes into shared app_state: { screen, id, values, errors, ... }.
+    return c.json(await getState(c, 'lastSubmission'))
   })
   .route('/products', products)
 

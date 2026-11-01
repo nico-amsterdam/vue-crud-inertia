@@ -40,13 +40,22 @@ export async function loadProductScreenData(
   return null
 }
 
-/** `AGENT_PRODUCTS_DISABLED=1` in .env switches off the agent product write API. */
-export const isAgentProductsDisabled = (): boolean => process.env.AGENT_PRODUCTS_DISABLED === '1'
+/**
+ * AGENT_ENABLED — comma-separated capability allow-list. When the variable is
+ * unset, every agent capability is allowed (default). When set, only listed
+ * capabilities are permitted — 'products' enables the product write API
+ * (/agent/products*); everything not listed answers 403.
+ */
+export const isAgentProductsDisabled = (): boolean => {
+  const list = process.env.AGENT_ENABLED
+  if (list === undefined) return false
+  return !list.split(',').some((entry) => entry.trim().toLowerCase() === 'products')
+}
 
 const products = new Hono<AppEnv>()
   .use('*', async (c, next) => {
     if (isAgentProductsDisabled()) {
-      return c.json({ error: 'Agent product API is disabled (AGENT_PRODUCTS_DISABLED=1)' }, 403)
+      return c.json({ error: "Agent capability 'products' is not in AGENT_ENABLED" }, 403)
     }
     await next()
   })
@@ -60,6 +69,11 @@ const products = new Hono<AppEnv>()
     return c.json({ ok: true, product: row ? toProduct(row) : null })
   })
   .patch('/:id', async (c) => {
+    // PATCH here means COMPLETE REPLACEMENT, not partial merge: validateProduct
+    // requires the full valid product and omitted fields clear to their empty
+    // defaults (description → '', price → null). Documented in the CLI help
+    // and the agent skill — don't "fix" this into merge semantics without
+    // deciding the merge format (RFC 7396) first.
     const id = Number(c.req.param('id'))
     const body = await c.req.json().catch(() => null)
     if (!body) return c.json({ error: 'Invalid body' }, 400)

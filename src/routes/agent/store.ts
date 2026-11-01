@@ -93,6 +93,12 @@ export async function cleanupAppState(ageMs: number): Promise<void> {
   await getDB().delete(tables.appState).where(lt(tables.appState.updatedAt, cutoff))
 }
 
+/** Builds the per-session app-state key (`<key>:<sessionId>`) shared by the
+ *  browser session and its paired agent (both resolve to the same session id). */
+export function userStateKey(sessionId: string | undefined, key: string): string {
+  return `${key}:${sessionId ?? 'anon'}`
+}
+
 /** Read a per-session app-state value (key already includes the session id prefix). */
 export async function getState(key: string): Promise<any | null> {
   const rows = await getDB().select().from(tables.appState).where(eq(tables.appState.key, key)).limit(1)

@@ -8,9 +8,10 @@ export type AppEnv = {
     authUser?: UserType
     /** CSRF token from the session cookie, set by the auth `requireAuth` middleware. */
     csrfToken?: string
-    /** Browser session id that created a pairing code — set by `requireAgentAuth`
-     * for cookie requests and the dev bypass; never for pairing-code agents. */
-    agentSessionId?: string
+    /** Session id that keys shared per-user state (`app_state` via `userStateKey`):
+     *  the browser session id for cookie requests and the dev bypass, and the
+     *  creating browser session id for paired agents (`pairing_codes.session_id`). */
+    sessionId?: string
   }
   Bindings: {
     ASSETS?: { fetch: typeof fetch }

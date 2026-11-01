@@ -18,6 +18,7 @@ export type { UserType }
  * Variables
  */
 export { LOGIN_PATH }
+export const DEV_SESSION_ID = 'dev-local'
 
 /*
  * Login page (server-rendered, no Inertia/Vue needed before login)
@@ -98,6 +99,7 @@ export const requireAuth: MiddlewareHandler<AppEnv> = async (c, next) => {
   if (process.env.AUTH_DISABLED === '1' && process.env.NODE_ENV !== 'production') {
     c.set('authUser', { login: 'dev:local', name: 'Local Dev', email: '', avatar_url: '' })
     c.set('csrfToken', 'dev-csrf-token')
+    c.set('sessionId', DEV_SESSION_ID)
     return next()
   }
   const session = await readSession(c)
@@ -118,6 +120,7 @@ export const requireAuth: MiddlewareHandler<AppEnv> = async (c, next) => {
   }
   c.set('authUser', authUser)
   c.set('csrfToken', session.csrfToken)
+  c.set('sessionId', session.id)
   await next()
 }
 

@@ -82,6 +82,9 @@ switch (cmd) {
   case 'data':
     await req('GET', '/agent/data')
     break
+  case 'form':
+    await req('GET', '/agent/form')
+    break
   case 'screens':
     await req('GET', '/agent/screens')
     break
@@ -98,5 +101,7 @@ switch (cmd) {
     await req('DELETE', `/agent/products/${args[0]}`)
     break
   default:
-    console.log(`Commands: login, logout, screen, data, screens, navigate, product_create, product_edit, product_delete`)
+    console.log('Commands: login, logout, screen, data, form, screens, navigate, product_create, product_edit, product_delete')
+    console.log('form       — the browser session\'s last new/edit form submission (values + the errors the UI showed)')
+    console.log('product_edit sends the FULL product as a complete replacement — omitted description/price are cleared')
 }

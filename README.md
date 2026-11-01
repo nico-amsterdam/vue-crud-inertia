@@ -67,19 +67,21 @@ An external agent can read and drive the UI **as the logged-in user**:
 3. Inspect and mutate:
    - `bun scripts/agent-cli.ts screen` — current screen, its `params`, required `context` keys and route
    - `bun scripts/agent-cli.ts data` — real objects for the current screen (products / one product)
+   - `bun scripts/agent-cli.ts form` — the user's last new/edit form submission: submitted values + the errors the UI returned
    - `bun scripts/agent-cli.ts screens` — the screen registry with context requirements
    - `bun scripts/agent-cli.ts navigate products/edit '{"id":1}'` — route the browser UI
    - `bun scripts/agent-cli.ts create '{"productName":"X","description":"Y","price":9.99}'`
-   - `bun scripts/agent-cli.ts edit 1 '{"productName":"X","description":"Y","price":19.99}'`
+   - `bun scripts/agent-cli.ts edit 1 '{"productName":"X","description":"Y","price":19.99}'` — `edit` (PATCH) is a complete replacement: send name, description **and** price every time; omitted fields clear to their empty defaults
    - `bun scripts/agent-cli.ts delete 1`
    - `bun scripts/agent-cli.ts logout`
 4. In the browser, click **Remove pairing code** (or log out) to revoke.
 
 Under the hood the UI polls `/agent/navigate` while pairing is actively syncing (only between "Start agent pairing" and "Remove pairing code"), so the agent can move the user’s browser, and it continuously reports the current screen so the agent can ask "what does the user see?". The pairing endpoints reuse `/agent/*` auth and CSRF protection from the template's `src/server.ts`.
 
-Tip: set `AGENT_PRODUCTS_DISABLED=1` in .env to forbid the agent product write API. Calls to
-`POST/PATCH/DELETE /agent/products*` (new/edit/delete) then return 403; read-only agent endpoints
-(`screen`, `data`, `navigate`, …) keep working.
+Tip: `AGENT_ENABLED` in .env is an allow-list of agent capabilities (comma-separated). Unset
+(= default) enables everything; when set, calls to anything not in the list answer 403 — capability
+`products` covers the agent product write API (`POST/PATCH/DELETE /agent/products*`, i.e.
+new/edit/delete); read-only agent endpoints (`screen`, `data`, `navigate`, …) are unaffected.
 
 ## Directory structure
 
