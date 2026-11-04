@@ -18,7 +18,7 @@ import {
   toProduct,
   updateProduct,
 } from './store'
-import { MAX_NAME_LENGTH, translateFieldErrors, validateProduct } from './validation'
+import { MAX_NAME_LENGTH, translateFieldErrors, convertAndValidateProductPayload } from './validation'
 
 /** Highest page accepted from the client. Prevents huge OFFSET values from
  *  overflowing SQLite's integer range (e.g. `?page=1e308` used to 500).
@@ -135,7 +135,7 @@ const app = new Hono<AppEnv>()
       return render(c, 'products/new', { errors })
     }
 
-    const result = validateProduct(body)
+    const result = convertAndValidateProductPayload(body)
 
     if (!result.valid) {
       const errors = translateFieldErrors(c, result.errors)
@@ -206,7 +206,7 @@ const app = new Hono<AppEnv>()
       modifiedAt: body.modifiedAt ?? null,
     }
 
-    const result = validateProduct(body)
+    const result = convertAndValidateProductPayload(body)
     if (!result.valid) {
       const errors = translateFieldErrors(c, result.errors)
       await captureSubmission(c, 'products/edit', id, submittedProduct, errors)

@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import type { AppEnv } from '@/types/env'
 import type { AgentScreenMeta } from './index'
 import type { ProductType } from '@/types/product'
-import { validateProduct } from '@/routes/products/validation'
+import { convertAndValidateProductPayload } from '@/routes/products/validation'
 import { createProduct, deleteProduct, getProductById, loadProductsPage, productNameExists, toProduct, updateProduct } from '@/routes/products/store'
 
 /** Fallback "user" attribution for product writes done through the agent API. */
@@ -62,7 +62,7 @@ const products = new Hono<AppEnv>()
   .post('/', async (c) => {
     const body = await c.req.json().catch(() => null)
     if (!body) return c.json({ error: 'Invalid body' }, 400)
-    const result = validateProduct(body)
+    const result = convertAndValidateProductPayload(body)
     if (!result.valid) return c.json({ errors: result.errors }, 400)
     if (await productNameExists(result.data.productName)) return c.json({ error: 'Name exists' }, 409)
     const row = await createProduct(result.data, c.var.authUser?.login ?? DEFAULT_AGENT_USER)
@@ -77,7 +77,7 @@ const products = new Hono<AppEnv>()
     const id = Number(c.req.param('id'))
     const body = await c.req.json().catch(() => null)
     if (!body) return c.json({ error: 'Invalid body' }, 400)
-    const result = validateProduct(body)
+    const result = convertAndValidateProductPayload(body)
     if (!result.valid) return c.json({ errors: result.errors }, 400)
     const updated = await updateProduct(id, result.data, c.var.authUser?.login ?? DEFAULT_AGENT_USER)
     if (!updated.length) return c.json({ error: 'Not found' }, 404)
