@@ -1,11 +1,18 @@
 ---
 name: agent-cli
-description: Drive this app's UI/data as an external agent via scripts/agent-cli.ts (Bun script, pairing-code auth, 5-minute keep-alive window). Use when the user asks to control the app remotely, inspect screens/data, navigate it to a URL, or create/edit/delete products from an agent.
+description: Drive this app's UI/data as an external agent via scripts/agent-cli.ts (Bun) or scripts/agent-cli.py (Python 3.10+, stdlib only) — pairing-code auth, 5-minute keep-alive window. Use when the user asks to control the app remotely, inspect screens/data, navigate it to a URL, or create/edit/delete products from an agent.
 ---
 
 # agent-cli — controlling the app as an external agent
 
-Run everything with **Bun** from the project root: `bun scripts/agent-cli.ts <command>`.
+Run everything from the project root with **either** runner — they implement the same commands and share `.agent-session.json`, so you can log in with one and call with the other:
+
+```bash
+bun scripts/agent-cli.ts <command>      # Bun
+python3 scripts/agent-cli.py <command>  # Python 3.10+, stdlib only (argparse/urllib)
+```
+
+The examples below use the Bun one; substitute `python3 scripts/agent-cli.py` everywhere.
 
 The CLI talks to the Hono API under `/agent/*` on the running app (wrangler dev serves it on `http://localhost:8787`). Requests are authenticated with a **pairing code only — never a cookie**.
 
@@ -43,21 +50,19 @@ screens                                             # GET  /agent/screens — sc
 data                                                # GET  /agent/data    — row data for the current screen
 form                                                # GET  /agent/form    — the browser's last new/edit form submission: values + the errors the UI showed
 navigate <screen> [paramsJson]                      # POST /agent/navigate — browser will Inertia-visit that route
-create    '<productJson>'                           # POST /agent/products
-edit <id>  '<productJson>'                          # PATCH /agent/products/:id — FULL replacement: send name, description AND price every time
-delete <id>                                         # DELETE /agent/products/:id
+product_create  '<productJson>'                     # POST /agent/products
+product_update <id> '<productJson>'                   # PATCH /agent/products/:id — FULL replacement: send name, description AND price every time
+product_delete <id>                                 # DELETE /agent/products/:id
 ```
 
 Known screens (`browser polls GET /agent/navigate` and follows them): `products`, `products/new`, `products/edit` (param `id`), `products/delete` (param `id`).
 
 ## Product payload
 
-Field names are camelCase. `price` is stored as cents server-side and accepts **either** a decimal string `'12.50'` (what the UI form sends — the reference format) **or** a JSON number `12.99`; both go through the same rules as `src/routes/products/validation.ts`: non-negative, at most 2 decimal places, at most 1,000,000. `0`, omitting the field and `""` all mean "no price" (`null`); booleans/arrays/objects are rejected. `data` and `form` return `price` as a **number**:
-
 ```bash
-bun scripts/agent-cli.ts create '{"productName":"Widget","description":"A widget","price":"12.50"}'
-bun scripts/agent-cli.ts edit 7 '{"productName":"Widget 2","description":"Better","price":9.99}'
-bun scripts/agent-cli.ts delete 7
+bun scripts/agent-cli.ts product_create '{"productName":"Widget","description":"A widget","price":"12.50"}'
+bun scripts/agent-cli.ts product_update 7 '{"productName":"Widget 2","description":"Better","price":9.99}'
+bun scripts/agent-cli.ts product_delete 7
 ```
 
 `edit` is a **complete replacement, not a partial merge**: PATCH here means "send the full valid product". Omitted fields are applied as their empty defaults (`description` → `""`, `price` → cleared) — the "missing = keep current value" merge-patch convention does **not** apply. Safe pattern: call `data` (or `GET` the list) first and send back the row you fetched with your one field changed.
@@ -66,7 +71,7 @@ Validation failures return `400 {"errors": {...}}` before reaching SQLite confli
 
 ## The form the user last submitted (`form`)
 
-`GET /agent/form` (`form` in the CLI) returns the browser session's **last new/edit submission** as captured server-side in `app_state`: `{ screen: 'products/new' | 'products/edit', id, values, errors, succeeded, at }`. `values` are the fields the client sent; `errors` are the translated per-field errors the UI rendered (or `null` when it succeeded). Use it to see why the user's own Create/Edit attempt failed, or to verify what they typed before you act — it is `null` until the user submits a form at least once. Only browser form submissions are stored there; the agent's own `product_create`/`product_edit` calls return their errors inline and do not touch it.
+`GET /agent/form` (`form` in the CLI) returns the browser session's **last new/edit submission** as captured server-side in `app_state`: `{ screen: 'products/new' | 'products/edit', id, values, errors, succeeded, at }`. `values` are the fields the client sent; `errors` are the translated per-field errors the UI rendered (or `null` when it succeeded). Use it to see why the user's own Create/Edit attempt failed, or to verify what they typed before you act — it is `null` until the user submits a form at least once. Only browser form submissions are stored there; the agent's own `product_create`/`product_update` calls return their errors inline and do not touch it.
 
 ## Conventions and gotchas
 
@@ -77,3 +82,4 @@ Validation failures return `400 {"errors": {...}}` before reaching SQLite confli
 - The CLI never sends CSRF tokens — none needed for pairing-code requests. If you see `403 Invalid CSRF token`, you bypassed the CLI and sent the browser's cookie instead: don't.
 - To find out where the user currently is (screen + id) call `screen` first; `data` returns the same screen's dataset (product or product list, `null` for screens without data).
 - After `navigate`, the change happens in the user's browser asynchronously (Inertia visit via the 2 s poll). Poll `screen` until it reflects the target before assuming success (a couple of seconds is usually enough).
+- To refresh the screen you are already on, navigate to it again (e.g. `navigate products`).

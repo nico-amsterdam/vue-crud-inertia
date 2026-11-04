@@ -4,10 +4,10 @@
 
 - ⛅ **Cloud**: Deploy to Cloudflare without any hassle
 - 🔐 **Authentication**: Login with Google or GitHub. Easy setup instructions
-- 🤖 **AI agent instructions**: AGENTS.md for the AI coding agent
-- ⚡ **Inertia**: Server-driven pages with smooth client-side navigation
-- ✨ **Modern user interface**: Vue 3 single-page app served by the Hono backend
+- 🤖 **AI access**: Share your session with your AI agent
 - 🧩 **Lightweight web framework**: Hono is tiny, has built-in middleware and clean APIs
+- ✨ **Modern user interface**: Vue 3 single-page interface
+- ⚡ **Inertia**: Server-side routing and data for the Vue client
 - ↻  **Live reload**: Changes in the code are immediately visible in the browser during development
 - 💾 **Database**: Drizzle ORM with SQLite
 - 🔄 **Migrations**: Database migration system
@@ -18,8 +18,7 @@
 - 🌐 **Internationalization**: Switch between English, German, Spanish and French
 - 🎨 **Self-hosted icons**: Iconify (tabler) icons pruned and bundled — no CDN needed
 - 🛡️ **Security**: Content security policy with nonces, signed cookies, fetch metadata checks, CSRF, rate limiting
-- 🤝 **Agent interface**: source-of-truth for screens/data/actions — extensible endpoint contract (`/agent/*`) with pairing code auth and full CLI support
-- 🖥️ **Agent CLI**: login via pairing code, inspect screens/data, navigate, create/edit/delete products (`bun scripts/agent-cli.ts`)
+- 📝 **AI agent instructions**: AGENTS.md for the AI coding agent
 - 🚀 **Ready to launch**: Skip the scaffolding. Get straight to implementing your business ideas
 
 ## Wireframe
@@ -44,7 +43,7 @@
 
 ## About this project
 
-Application template with [Inertia](https://inertiajs.com/), [Vue 3](https://vuejs.org/), [Hono](https://hono.dev/) and [Bun](https://bun.com/), with the option to deploy it on Cloudflare, so everything can run on the edge in the cloud. A commandline interface (CLI) allows you to connect your own AI agent and share a session, navigate the app, and read/edit/add/delete rows with the same validations as via the UI.
+Application template with [Inertia](https://inertiajs.com/), [Vue 3](https://vuejs.org/), [Hono](https://hono.dev/) and [Bun](https://bun.com/), with the option to deploy it on Cloudflare, so everything can run on the edge in the cloud. A commandline interface (CLI) allows you to connect your own AI agent and share a session; navigate the app, and read/edit/add/delete rows with the same validations and restrictions as via the UI.
 
 You can [use this project](https://github.com/new?template_name=vue-crud-nuxt&template_owner=nico-amsterdam) as a starter.
 
@@ -58,11 +57,13 @@ Inertia sits between the router and the frontend: the server stays in charge of 
 D1 is a managed database with automatic backups (Time Travel).
 It is great for most CRUD applications. There are a few limitations; D1 has a maximum size of 10 GB per instance (5 GB in the free plan) and it doesn't support transactions with multiple steps, though it does support atomic batch operations.
 
-## Agent interface (pairing code + CLI)
+## AI agent interface (pairing code + CLI)
 
-An external agent can read and drive the UI **as the logged-in user**:
+An external AI agent can read and drive the UI **as the logged-in user**.
+A skill for the `agent-cli.ts` is available in the skills directory.
 
-1. In the browser, click **Start UI agent pairing** → the page shows a pairing code (also copyable to clipboard). This code is stored with the user's login.
+Flow:
+1. In the browser, click **Start AI agent pairing** → the page shows a pairing code (also copyable to clipboard). This code is stored with the user's login.
 2. Authenticate from outside using that code: `bun scripts/agent-cli.ts login --pairing-code <code>`. Login immediately probes `GET /agent/screen` to verify the connection — wrong or expired codes fail right away (and the saved session file is removed).
 3. Inspect and mutate:
    - `bun scripts/agent-cli.ts screen` — current screen, its `params`, required `context` keys and route
@@ -70,13 +71,13 @@ An external agent can read and drive the UI **as the logged-in user**:
    - `bun scripts/agent-cli.ts form` — the user's last new/edit form submission: submitted values + the errors the UI returned
    - `bun scripts/agent-cli.ts screens` — the screen registry with context requirements
    - `bun scripts/agent-cli.ts navigate products/edit '{"id":1}'` — route the browser UI
-   - `bun scripts/agent-cli.ts create '{"productName":"X","description":"Y","price":9.99}'`
-   - `bun scripts/agent-cli.ts edit 1 '{"productName":"X","description":"Y","price":19.99}'` — `edit` (PATCH) is a complete replacement: send name, description **and** price every time; omitted fields clear to their empty defaults
-   - `bun scripts/agent-cli.ts delete 1`
+   - `bun scripts/agent-cli.ts product_create '{"productName":"X","description":"Y","price":9.99}'`
+   - `bun scripts/agent-cli.ts product_update 1 '{"productName":"X","description":"Y","price":19.99}'` — `product_update` (PATCH) is a complete replacement: send name, description **and** price every time; omitted fields clear to their empty defaults
+   - `bun scripts/agent-cli.ts product_delete 1`
    - `bun scripts/agent-cli.ts logout`
 4. In the browser, click **Stop pairing** (or log out) to revoke.
 
-Under the hood the UI polls `/agent/navigate` while pairing is actively syncing (only between "Start UI agent pairing" and "Stop pairing"), so the agent can move the user’s browser, and it continuously reports the current screen so the agent can ask "what does the user see?". The pairing endpoints reuse `/agent/*` auth and CSRF protection from the template's `src/server.ts`.
+Under the hood the UI polls `/agent/navigate` while pairing is actively syncing (only between "Start AI agent pairing" and "Stop pairing"), so the agent can move the user’s browser, and it continuously reports the current screen so the agent can ask "what does the user see?". The pairing endpoints reuse `/agent/*` auth and CSRF protection from the template's `src/server.ts`.
 
 Tip: `AGENT_ENABLED` in .env is an allow-list of agent capabilities (comma-separated). Unset
 (= default) enables everything; when set, calls to anything not in the list answer 403 — capability
@@ -91,13 +92,12 @@ answers 404 (the routes are effectively turned off) **and** the UI hides its age
 
 ```text
 ├── e2e/                   # Playwright end-to-end tests
-├── migrations/            # database migrations (generated per deployment, not committed here)
+├── migrations/            # database migrations (generated per deployment)
 ├── public/                # public assets
 │   ├── css/               # stylesheets
-│   ├── images/            # images
-│   ├── privacy.html       # also served at /privacy (redirect)
-│   └── terms.html         # also served at /terms (redirect)
-├── scripts/               # code generators (icons, Vite manifest module)
+│   └── images/            # images
+├── scripts/               # code generators (icons, Vite manifest module, agent-cli)
+├── skills/                # agent-cli skill
 ├── src/                   # source code
 │   ├── db/                # database schema and client
 │   ├── generated/         # generated files (Vite manifest module, pruned icon set)
@@ -106,11 +106,13 @@ answers 404 (the routes are effectively turned off) **and** the UI hides its age
 │   │   ├── components/    # reusable Vue components
 │   │   ├── composables/   # reusable functions
 │   │   ├── layouts/       # top section of the Vue pages used in main.ts
+│   │   ├── errors/        # Pages for HTTP 404 and 500 errors
 │   │   └── pages/         # Inertia page components
 │   │       └── products/  # example CRUD feature (replace with your domain)
-│   ├── lib/               # security and url helpers
+│   ├── lib/               # security, validation and url helpers
 │   ├── middleware/        # middleware like for example rate limiting
 │   ├── routes/            # server-side routes
+│   │   ├── agent/         # AI agent interface
 │   │   ├── auth/          # OAuth authentication (Google/GitHub), session, CSRF
 │   │   └── products/      # example CRUD feature (replace with your domain)
 │   ├── types/             # TypeScript types
@@ -201,7 +203,7 @@ back to development-only secrets, so `bun dev` works without this setup (but
 `bun preview` and deploys do not). The secrets are set after the first deploy,
 in the block below.
 
-To deploy to cloudflare:
+To deploy to Cloudflare:
 ```bash
 bun wrangler login   # login on your Cloudflare account
 bun create:db        # interactive: use DB as binding
@@ -243,7 +245,7 @@ set; running the `secret:*` commands above creates a new deployment with them.
 - Automatically replicate your database around the world to improve global latency for read actions. Enable read replication for the database in the [Cloudflare dashboard](https://dash.cloudflare.com/)
 - If you define a CLOUDFLARE_API_TOKEN environment variable in the .env file, wrangler will automatically use this token (instead of `wrangler login`). Make sure that the token has enough permissions
 - Icons: the tabler icon set is pruned to the icons the app uses (`src/generated/tabler-icons.json`). The generators scan `src/` for `icon="tabler:…"`, so adding a new icon name in a Vue component is enough; run `bun generate:icons` (the build does this automatically) to update the collection. Icons are rendered offline through `@iconify/vue/offline`, so no requests go to the Iconify API.
-- Use only Bun for installing packages (`bun install`). Mixing package managers (for example pnpm and bun) creates duplicate package copies in node_modules; with two Vue runtimes this shows up as `Missing ref owner context` warnings and broken reactivity. If it happens anyway: `rm -rf node_modules && bun install`.
+- Use only Bun for installing packages (`bun install`). Mixing package managers (for example pnpm and bun) creates duplicate package copies in node_modules. If it happens anyway: `rm -rf node_modules && bun install`.
 - Stale Vite dependency cache after upgrading packages: `rm -rf node_modules/.vite` and restart `bun dev`.
 
 ## Available Scripts

@@ -30,8 +30,12 @@ const { pairingCode, pairingStage, agentActive, createPairingCode, copyPairingCo
  */
 
 function syncScreen() {
-  // Agent feature switched off: no /agent/state calls (they would 404).
-  if (!agentEnabled.value) return
+  // Only paired sessions may sync: an unpaired browser firing this on every
+  // navigation would churn a D1 app_state row nobody reads. `agentActive`
+  // flips true inside createPairingCode() (via startAgent), which is awaited
+  // before startAgentPairing's explicit syncScreen() below — so the current
+  // screen is fresh at the moment the agent can first read it.
+  if (!agentEnabled.value || !agentActive.value) return
   const comp = page.component
   const screen = comp.endsWith('/index') ? comp.slice(0, -6) : comp
   // Keep the :id parameter for edit/delete screens so agents can read it back.

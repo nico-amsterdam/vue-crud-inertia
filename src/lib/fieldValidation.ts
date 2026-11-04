@@ -177,12 +177,12 @@ export function convertNumberType(
   const value = input[field]
   if (value === null || value === undefined) return null
   if (typeof value === 'number') {
-    if (!Number.isNaN(value)) return value
+    if (Number.isFinite(value)) return value
   } else if (typeof value === 'string') {
     const trimmed = value.trim()
     if (trimmed === '') return null
     const parsed = Number(trimmed)
-    if (!Number.isNaN(parsed)) return parsed
+    if (Number.isFinite(parsed)) return parsed
   }
 
   errors[field] = errorMessage

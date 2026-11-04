@@ -60,16 +60,6 @@ export async function getProductById(id: number): Promise<DBProduct | undefined>
     .get()
 }
 
-export async function productNameExists(productName: string, excludeId?: number): Promise<boolean> {
-  const existing = await getDB()
-    .select()
-    .from(tables.products)
-    .where(eq(tables.products.name, productName))
-    .get()
-  if (!existing) return false
-  return excludeId === undefined || existing.id !== excludeId
-}
-
 export function priceToCents(price: number | null): number | null {
   return price === null ? null : Math.round(price * 100)
 }
@@ -77,52 +67,87 @@ export function priceToCents(price: number | null): number | null {
 /** The validated fields both HTTP routes and the agent routes write
  *  (validateProduct().data — without modifiedAt, which updateProduct stamps). */
 
-/** Insert a new product. Throws on constraint violations (e.g. duplicate name) —
- *  handlers turn that into their own error presentation. */
-export async function createProduct(input: ProductBaseType, createdBy: string): Promise<DBProduct | undefined> {
-  const [row] = await getDB()
-    .insert(tables.products)
-    .values({
-      name: input.productName,
-      description: input.description,
-      price: priceToCents(input.price),
-      createdBy,
-    })
-    .returning()
-  return row as DBProduct | undefined
+/** Result of a product write. `ok: false` reasons:
+ *  - `duplicate-name`: SQLite rejected the write because another product already
+ *    has this name (UNIQUE constraint on products.name, caught here so the
+ *    routes never see raw driver errors and a check-then-insert race window
+ *    cannot exist).
+ *  - `not-found` (updateProduct only): no row matched — the id does not exist,
+ *    or the optimistic-concurrency condition in verify mode failed.
+ *  - `write-failed`: the driver threw for some other reason. */
+export type CreateProductResult =
+  | { ok: true; product: DBProduct }
+  | { ok: false; reason: 'duplicate-name' | 'write-failed' }
+export type UpdateProductResult =
+  | { ok: true; product: DBProduct }
+  | { ok: false; reason: 'not-found' | 'duplicate-name' | 'write-failed' }
+
+/** Drivers surface the constraint violation differently, so check both the
+ *  cause (D1 includes the SQLite message verbatim) and the SQLite code. */
+function isDuplicateProductNameError(e: unknown): boolean {
+  const message = e instanceof Error ? String(e.cause) ?? e.message : String(e)
+  return message.includes('UNIQUE constraint failed: products.name:')
+    && message.includes('SQLITE_CONSTRAINT_UNIQUE')
+}
+
+/** Insert a new product. Duplicate names are detected via the UNIQUE constraint
+ *  on products.name and reported as a `duplicate-name` failure instead of thrown. */
+export async function createProduct(input: ProductBaseType, createdBy: string): Promise<CreateProductResult> {
+  try {
+    const [row] = await getDB()
+      .insert(tables.products)
+      .values({
+        name: input.productName,
+        description: input.description,
+        price: priceToCents(input.price),
+        createdBy,
+      })
+      .returning()
+    return row ? { ok: true, product: row as DBProduct } : { ok: false, reason: 'write-failed' }
+  } catch (e) {
+    return isDuplicateProductNameError(e)
+      ? { ok: false, reason: 'duplicate-name' }
+      : { ok: false, reason: 'write-failed' }
+  }
 }
 
 /**
  * Update a product's fields. `verifyModifiedAt` implements optimistic concurrency:
  * `undefined` (used by agent calls) skips the check, `null` requires the row to
  * never have been modified, a Date requires it to still carry exactly that
- * modification timestamp. Returns the updated rows; an empty array means the
- * product id does not exist (or was changed concurrently in verify mode).
+ * modification timestamp. No matching row → `not-found` (missing id, or changed
+ * concurrently in verify mode); a duplicate name → `duplicate-name`.
  */
 export async function updateProduct(
   id: number,
   input: ProductBaseType,
   modifiedBy: string,
   verifyModifiedAt?: Date | null,
-): Promise<DBProduct[]> {
+): Promise<UpdateProductResult> {
   const conditions = [eq(tables.products.id, id)]
   if (verifyModifiedAt !== undefined) {
     conditions.push(verifyModifiedAt === null
       ? isNull(tables.products.modifiedAt)
       : eq(tables.products.modifiedAt, verifyModifiedAt))
   }
-  const rows = await getDB()
-    .update(tables.products)
-    .set({
-      name: input.productName,
-      description: input.description,
-      price: priceToCents(input.price),
-      modifiedBy,
-      modifiedAt: new Date(),
-    })
-    .where(conditions.length === 1 ? conditions[0] : and(...conditions))
-    .returning()
-  return rows as DBProduct[]
+  try {
+    const rows = await getDB()
+      .update(tables.products)
+      .set({
+        name: input.productName,
+        description: input.description,
+        price: priceToCents(input.price),
+        modifiedBy,
+        modifiedAt: new Date(),
+      })
+      .where(conditions.length === 1 ? conditions[0] : and(...conditions))
+      .returning()
+    return rows.length ? { ok: true, product: rows[0] as DBProduct } : { ok: false, reason: 'not-found' }
+  } catch (e) {
+    return isDuplicateProductNameError(e)
+      ? { ok: false, reason: 'duplicate-name' }
+      : { ok: false, reason: 'write-failed' }
+  }
 }
 
 /** Delete by id; deleting an already-missing id is a no-op. */

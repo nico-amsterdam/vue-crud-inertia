@@ -14,11 +14,10 @@ import {
   getProductById,
   loadProductsPage,
   namePrefixPattern,
-  productNameExists,
   toProduct,
   updateProduct,
 } from './store'
-import { MAX_NAME_LENGTH, translateFieldErrors, convertAndValidateProductPayload } from './validation'
+import { MAX_NAME_LENGTH, translateFieldErrors, parseProductPayload } from './validation'
 
 /** Highest page accepted from the client. Prevents huge OFFSET values from
  *  overflowing SQLite's integer range (e.g. `?page=1e308` used to 500).
@@ -76,14 +75,17 @@ async function flashSuccess(c: Context, message: string): Promise<void> {
  * Remember the last form submission (new/edit) of this browser session in the
  * shared `app_state` store, so an external agent can ask what the form sent
  * and which errors the UI showed (read via `GET /agent/form`). `values` are
- * the parsed fields as submitted; `errors` are the translated per-field
- * errors returned to the client, or null after a successful submission.
+ * the fields as submitted: the raw JSON body (new) or the normalized form
+ * values (edit — `submittedProduct`, which preserves the original
+ * `modifiedAt` token), or null when the body could not be parsed at all.
+ * `errors` are the translated per-field errors returned to the client, or
+ * null after a successful submission.
  */
 async function captureSubmission(
   c: Context<AppEnv>,
   screen: 'products/new' | 'products/edit',
   id: number | null,
-  values: unknown,
+  values: Partial<ProductBaseType> | ProductType | null,
   errors: ProductErrorsType | null,
 ): Promise<void> {
   await setState(userStateKey(c.var.sessionId, 'lastSubmission'), {
@@ -131,11 +133,11 @@ const app = new Hono<AppEnv>()
     const body = await readJsonBody(c)
     if (body === null) {
       const errors = { write: t(c, 'Invalid request body') }
-      await captureSubmission(c, 'products/new', null, {}, errors)
+      await captureSubmission(c, 'products/new', null, null, errors)
       return render(c, 'products/new', { errors })
     }
 
-    const result = convertAndValidateProductPayload(body)
+    const result = parseProductPayload(body)
 
     if (!result.valid) {
       const errors = translateFieldErrors(c, result.errors)
@@ -143,27 +145,20 @@ const app = new Hono<AppEnv>()
       return render(c, 'products/new', { errors })
     }
 
-    if (await productNameExists(result.data.productName)) {
-      const errors = { productName: t(c, 'A product with this name already exists') }
-      await captureSubmission(c, 'products/new', null, result.data, errors)
+    // createProduct reports every predictable failure via its result; unexpected
+    // server errors are deliberately not caught here — the global app.onError
+    // (server.ts) logs them and renders the friendly 500 page.
+    const created = await createProduct(result.data, c.var.authUser?.login ?? DEFAULT_USER)
+    if (!created.ok) {
+      const errors = created.reason === 'duplicate-name'
+        ? { productName: t(c, 'A product with this name already exists') }
+        : { write: t(c, 'Could not create product') }
+      await captureSubmission(c, 'products/new', null, body, errors)
       return render(c, 'products/new', { errors })
     }
-
-    try {
-      const created = await createProduct(result.data, c.var.authUser?.login ?? DEFAULT_USER)
-      if (!created) {
-        const errors = { write: t(c, 'Could not create product') }
-        await captureSubmission(c, 'products/new', null, result.data, errors)
-        return render(c, 'products/new', { errors })
-      }
-      await captureSubmission(c, 'products/new', null, result.data, null)
-      await flashSuccess(c, t(c, 'Product created successfully'))
-      return c.redirect('/products', 303)
-    } catch {
-      const errors = { write: t(c, 'Could not create product') }
-      await captureSubmission(c, 'products/new', null, result.data, errors)
-      return render(c, 'products/new', { errors })
-    }
+    await captureSubmission(c, 'products/new', null, body, null)
+    await flashSuccess(c, t(c, 'Product created successfully'))
+    return c.redirect('/products', 303)
   })
   .get('/:id/edit', async (c) => {
     const id = readId(c)
@@ -186,7 +181,7 @@ const app = new Hono<AppEnv>()
       const dbProduct = await getProductById(id)
       if (!dbProduct) return renderNotFound(c)
       const errors = { write: t(c, 'Invalid request body') }
-      await captureSubmission(c, 'products/edit', id, {}, errors)
+      await captureSubmission(c, 'products/edit', id, null, errors)
       return render(c, 'products/edit', {
         product: toProduct(dbProduct),
         errors,
@@ -206,15 +201,9 @@ const app = new Hono<AppEnv>()
       modifiedAt: body.modifiedAt ?? null,
     }
 
-    const result = convertAndValidateProductPayload(body)
+    const result = parseProductPayload(body)
     if (!result.valid) {
       const errors = translateFieldErrors(c, result.errors)
-      await captureSubmission(c, 'products/edit', id, submittedProduct, errors)
-      return render(c, 'products/edit', { product: submittedProduct, errors })
-    }
-
-    if (await productNameExists(result.data.productName, id)) {
-      const errors = { productName: t(c, 'A product with this name already exists') }
       await captureSubmission(c, 'products/edit', id, submittedProduct, errors)
       return render(c, 'products/edit', { product: submittedProduct, errors })
     }
@@ -223,29 +212,37 @@ const app = new Hono<AppEnv>()
     const modifiedAt = body.modifiedAt
     const verifyModifiedAt = !modifiedAt ? null : new Date(modifiedAt)
 
-    try {
-      const updatedProducts = await updateProduct(
-        id,
-        result.data,
-        c.var.authUser?.login ?? DEFAULT_USER,
-        verifyModifiedAt ?? null,
-      )
+    const updatedProducts = await updateProduct(
+      id,
+      result.data,
+      c.var.authUser?.login ?? DEFAULT_USER,
+      verifyModifiedAt ?? null,
+    )
 
-      if (updatedProducts.length === 0) {
-        const message = t(c, "'{0}' is changed or removed by another user. Reopen it from the list.", result.data.productName)
-        const errors = { write: message }
-        await captureSubmission(c, 'products/edit', id, submittedProduct, errors)
-        return render(c, 'products/edit', { product: submittedProduct, errors })
-      }
-
+    if (updatedProducts.ok) {
       await captureSubmission(c, 'products/edit', id, submittedProduct, null)
       await flashSuccess(c, t(c, 'Product updated successfully'))
       return c.redirect('/products', 303)
-    } catch {
+    }
+
+    if (updatedProducts.reason === 'duplicate-name') {
+      const errors = { productName: t(c, 'A product with this name already exists') }
+      await captureSubmission(c, 'products/edit', id, submittedProduct, errors)
+      return render(c, 'products/edit', { product: submittedProduct, errors })
+    }
+    if (updatedProducts.reason === 'write-failed') {
       const errors = { write: t(c, 'Could not update product') }
       await captureSubmission(c, 'products/edit', id, submittedProduct, errors)
       return render(c, 'products/edit', { product: submittedProduct, errors })
     }
+
+    // `not-found`: missing id or changed/removed concurrently (the optimistic-
+    // concurrency condition filtered the row out). The id itself is validated
+    // above, so this reads as an edit conflict: point the user back to the list.
+    const message = t(c, "'{0}' is changed or removed by another user. Reopen it from the list.", result.data.productName)
+    const errors = { write: message }
+    await captureSubmission(c, 'products/edit', id, submittedProduct, errors)
+    return render(c, 'products/edit', { product: submittedProduct, errors })
   })
   .get('/:id/delete', async (c) => {
     const id = readId(c)

@@ -2,8 +2,8 @@ import { Hono } from 'hono'
 import type { AppEnv } from '@/types/env'
 import type { AgentScreenMeta } from './index'
 import type { ProductType } from '@/types/product'
-import { convertAndValidateProductPayload } from '@/routes/products/validation'
-import { createProduct, deleteProduct, getProductById, loadProductsPage, productNameExists, toProduct, updateProduct } from '@/routes/products/store'
+import { parseProductPayload } from '@/routes/products/validation'
+import { createProduct, deleteProduct, getProductById, loadProductsPage, toProduct, updateProduct } from '@/routes/products/store'
 
 /** Fallback "user" attribution for product writes done through the agent API. */
 export const DEFAULT_AGENT_USER = 'agent'
@@ -62,11 +62,18 @@ const products = new Hono<AppEnv>()
   .post('/', async (c) => {
     const body = await c.req.json().catch(() => null)
     if (!body) return c.json({ error: 'Invalid body' }, 400)
-    const result = convertAndValidateProductPayload(body)
+    const result = parseProductPayload(body)
     if (!result.valid) return c.json({ errors: result.errors }, 400)
-    if (await productNameExists(result.data.productName)) return c.json({ error: 'Name exists' }, 409)
-    const row = await createProduct(result.data, c.var.authUser?.login ?? DEFAULT_AGENT_USER)
-    return c.json({ ok: true, product: row ? toProduct(row) : null })
+    // Duplicate names surface as a `duplicate-name` failure from the store
+    // (UNIQUE constraint on products.name), mapped back to the same 409 that
+    // the agent CLI has always seen for this case.
+    const created = await createProduct(result.data, c.var.authUser?.login ?? DEFAULT_AGENT_USER)
+    if (!created.ok) {
+      return created.reason === 'duplicate-name'
+        ? c.json({ error: 'Name exists' }, 409)
+        : c.json({ error: 'Write failed' }, 500)
+    }
+    return c.json({ ok: true, product: toProduct(created.product) })
   })
   .patch('/:id', async (c) => {
     // PATCH here means COMPLETE REPLACEMENT, not partial merge: validateProduct
@@ -77,11 +84,17 @@ const products = new Hono<AppEnv>()
     const id = Number(c.req.param('id'))
     const body = await c.req.json().catch(() => null)
     if (!body) return c.json({ error: 'Invalid body' }, 400)
-    const result = convertAndValidateProductPayload(body)
+    const result = parseProductPayload(body)
     if (!result.valid) return c.json({ errors: result.errors }, 400)
     const updated = await updateProduct(id, result.data, c.var.authUser?.login ?? DEFAULT_AGENT_USER)
-    if (!updated.length) return c.json({ error: 'Not found' }, 404)
-    return c.json({ ok: true, product: toProduct(updated[0]) })
+    if (!updated.ok) {
+      return updated.reason === 'not-found'
+        ? c.json({ error: 'Not found' }, 404)
+        : updated.reason === 'duplicate-name'
+          ? c.json({ error: 'Name exists' }, 409)
+          : c.json({ error: 'Write failed' }, 500)
+    }
+    return c.json({ ok: true, product: toProduct(updated.product) })
   })
   .delete('/:id', async (c) => {
     const id = Number(c.req.param('id'))

@@ -43,9 +43,6 @@ function convertProductStringType<Field extends ProductStringField>(
   field: Field,
   errors: ProductErrorsType
 ): string {
-  // Form submissions always contain strings.
-  // 'Incorrect input string' is only likely to occur in JSON inputs.
-  // Therefore we are fine with this rather technical error message.
   return convertStringType(input, field, 'Incorrect input string', errors)
 }
 
@@ -75,6 +72,7 @@ function convertProductDateType<Field extends ProductDateField>(
  *
  * In case of a UI, normally the UI has input validation and it is unlikely
  * that the the backend has to return errors about incorrect types.
+ * Runtime checks are necessairy though, to catch manipulated input.
  */
 export function convertProductFieldTypes(
   payload: unknown
@@ -82,11 +80,11 @@ export function convertProductFieldTypes(
   const errors: ProductErrorsType = {}
   const input = (typeof payload === 'object' && payload !== null ? payload : {}) as Record<string, unknown>
 
-  // All form input's are strings and are converted to the correct type when valid.
-  // Input is also accepted if it is already the correct type (JSON input).
+  // productName and description are trimmed.
   const productName = convertProductStringType(input, 'productName', errors).trim()
   const description = convertProductStringType(input, 'description', errors).trim()
   const price = convertProductNumberType(input, 'price', 'Price must be a non-negative number', errors)
+  // modifiedAt is submitted as a string and converted to Date type
   const modifiedAt = convertProductDateType(input, 'modifiedAt', 'Modified date must be valid', errors)
 
   if (Object.keys(errors).length > 0) return { valid: false, errors }
@@ -152,7 +150,7 @@ export function validateProduct(
  * 1. convertProductFieldTypes - field type checks and payload conversion
  * 2. validateProduct - business rule validations on the converted ProductBaseType
  */
-export function convertAndValidateProductPayload(
+export function parseProductPayload(
   payload: unknown
 ): { valid: true; data: ProductBaseType } | { valid: false; errors: ProductErrorsType } {
   const fieldTypeResult = convertProductFieldTypes(payload)
