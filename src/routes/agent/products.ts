@@ -2,8 +2,9 @@ import { Hono } from 'hono'
 import type { AppEnv } from '@/types/env'
 import type { AgentScreenMeta } from './index'
 import type { ProductType } from '@/types/product'
-import { parseProductPayload } from '@/routes/products/validation'
-import { createProduct, deleteProduct, getProductById, loadProductsPage, toProduct, updateProduct } from '@/routes/products/store'
+import { MAX_NAME_LENGTH, parseProductPayload } from '@/routes/products/validation'
+import { createProduct, deleteProduct, getProductById, loadProductsPage, namePrefixPattern, toProduct, updateProduct } from '@/routes/products/store'
+import { MAX_PAGE, readPage } from '@/routes/products'
 
 /** Fallback "user" attribution for product writes done through the agent API. */
 export const DEFAULT_AGENT_USER = 'agent'
@@ -17,19 +18,25 @@ export const PRODUCT_SCREENS: Record<string, AgentScreenMeta> = {
 }
 
 /*
- * Product write routes of the agent JSON API.
+ * Product read/write routes of the agent JSON API.
  * Mounted by agent/index.ts under /products; requireAgentAuth runs on the parent.
  */
 
 /** Load the data payload the agent `/data` route serves for a product screen
  *  (a product list page, or the single product behind edit/delete screens).
- *  Every agent screen is a product screen; unknown screens yield `null`. */
+ *  `q`/`page` mirror what the user is looking at in the browser (synced by
+ *  syncListNavigation in products/index.ts); unknown screens yield `null`. */
 export async function loadProductScreenData(
   screen: string,
-  params?: { page?: number; id?: number } | null,
+  params?: { page?: number; id?: number; q?: string } | null,
 ): Promise<ProductType[] | ProductType | null> {
   if (screen === 'products') {
-    const { products } = await loadProductsPage(params?.page ?? 1)
+    const page = Number(params?.page ?? 1)
+    const clampedPage = Number.isFinite(page) && page >= 1 ? Math.min(Math.floor(page), MAX_PAGE) : 1
+    // Same clamping as the UI's findbyname route: longer prefixes cannot match
+    // anything and oversized LIKE patterns make SQLite throw a 500.
+    const q = typeof params?.q === 'string' ? params.q.slice(0, MAX_NAME_LENGTH) : ''
+    const { products } = await loadProductsPage(clampedPage, namePrefixPattern(q))
     return products
   }
   if (screen === 'products/edit' || screen === 'products/delete') {
@@ -43,8 +50,9 @@ export async function loadProductScreenData(
 /**
  * AGENT_ENABLED — comma-separated capability allow-list. When the variable is
  * unset, every agent capability is allowed (default). When set, only listed
- * capabilities are permitted — 'products' enables the product write API
- * (/agent/products*); everything not listed answers 403.
+ * capabilities are permitted — 'products' enables the product API
+ * (/agent/products*, the list/search GET and the write routes); everything
+ * not listed answers 403.
  */
 export const isAgentProductsDisabled = (): boolean => {
   const list = process.env.AGENT_ENABLED
@@ -58,6 +66,14 @@ const products = new Hono<AppEnv>()
       return c.json({ error: "Agent capability 'products' is not in AGENT_ENABLED" }, 403)
     }
     await next()
+  })
+  // JSON twin of the UI's /products/findbyname route: the same name-prefix
+  // filter (starting letters) and pagination, but for agent callers.
+  .get('/', async (c) => {
+    const q = (c.req.query('q') ?? '').slice(0, MAX_NAME_LENGTH)
+    const page = readPage(c)
+    const { products: pageProducts, hasMore } = await loadProductsPage(page, namePrefixPattern(q))
+    return c.json({ q, page, products: pageProducts, hasMore })
   })
   .post('/', async (c) => {
     const body = await c.req.json().catch(() => null)

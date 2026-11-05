@@ -91,6 +91,16 @@ switch (cmd) {
   case 'navigate':
     await req('POST', '/agent/navigate', { screen: args[0], params: args[1] ? JSON.parse(args[1]) : {} })
     break
+  case 'product_list': {
+    const qIdx = args.indexOf('--q')
+    const pageIdx = args.indexOf('--page')
+    const params = new URLSearchParams()
+    if (qIdx >= 0 && args[qIdx + 1] !== undefined) params.set('q', args[qIdx + 1])
+    if (pageIdx >= 0 && args[pageIdx + 1] !== undefined) params.set('page', args[pageIdx + 1])
+    const qs = params.toString()
+    await req('GET', `/agent/products${qs ? `?${qs}` : ''}`)
+    break
+  }
   case 'product_create':
     await req('POST', '/agent/products', JSON.parse(args[0] ?? '{}'))
     break
@@ -101,7 +111,8 @@ switch (cmd) {
     await req('DELETE', `/agent/products/${args[0]}`)
     break
   default:
-    console.log('Commands: login, logout, screen, data, form, screens, navigate, product_create, product_update, product_delete')
+    console.log('Commands: login, logout, screen, data, form, screens, navigate, product_list, product_create, product_update, product_delete')
     console.log('form       — the browser session\'s last new/edit form submission (values + the errors the UI showed)')
+    console.log('product_list [--q <name prefix>] [--page <n>] — one page of products (8 per page); like the UI\'s "find by name" filter')
     console.log('product_update sends the FULL product as a complete replacement — omitted description/price are cleared')
 }

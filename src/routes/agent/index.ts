@@ -136,7 +136,21 @@ const app = new Hono<AppEnv>()
   })
   .post('/state', async (c) => {
     const body = await c.req.json().catch(() => ({}))
-    if (body?.navigation) await setState(c, 'navigation', body.navigation)
+    const nav = body?.navigation
+    if (nav) {
+      // The products list routes know the user's `q`/`page` precisely
+      // (syncListNavigation in products/index.ts — the browser has no way to
+      // report them: `preserve-url` keeps `?page=` out of the URL and
+      // load-more is a partial reload without a navigate event). When the
+      // browser's generic syncScreen describes the same screen and carries no
+      // params, merge over the server-synced ones instead of clobbering
+      // `q`/`page` with empty values.
+      const current = await getState(c, 'navigation')
+      const params = current?.screen === nav.screen && nav.screen === 'products'
+        ? { ...current.params, ...(nav.params ?? {}) }
+        : nav.params ?? {}
+      await setState(c, 'navigation', { screen: nav.screen, params, _writeId: `${Date.now()}` })
+    }
     return c.json({ ok: true })
   })
   .post('/pairing/create', async (c) => {

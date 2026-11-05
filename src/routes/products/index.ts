@@ -6,7 +6,7 @@ import type { AppEnv } from '@/types/env'
 import { t } from '@/i18n/request'
 import { rateLimit } from '@/middleware/rate-limit'
 import { renderNotFound } from '@/routes/errors'
-import { setState, userStateKey } from '@/routes/agent/store'
+import { setState, userStateKey, getPairingBySessionId } from '@/routes/agent/store'
 import {
   DEFAULT_USER,
   createProduct,
@@ -25,7 +25,7 @@ import { MAX_NAME_LENGTH, translateFieldErrors, parseProductPayload } from './va
 export const MAX_PAGE = 1_000_000
 
 /** The 1-based page number requested by the client. */
-function readPage(c: Context): number {
+export function readPage(c: Context): number {
   const page = Number(c.req.query('page') ?? 1)
   return Number.isFinite(page) && page >= 1 ? Math.min(Math.floor(page), MAX_PAGE) : 1
 }
@@ -98,10 +98,34 @@ async function captureSubmission(
   })
 }
 
+/**
+ * Mirror the user's current list location (filter prefix + page) into the
+ * agent's `navigation` app_state, so a paired agent reading `GET /agent/screen`
+ * sees the same `q`/`page` the UI is showing (and `GET /agent/data` serves the
+ * matching page). The browser-side syncScreen only reports the component name
+ * and edit/delete id: `preserve-url` keeps `?page=` out of the address bar and
+ * <InfiniteScroll> load-more requests are partial reloads that fire no
+ * `navigate` event, so the server is the only place that knows both values.
+ * Only paired sessions sync — an unpaired browser must not churn app_state
+ * on every keystroke-driven findbyname visit.
+ */
+async function syncListNavigation(c: Context<AppEnv>, q: string, page: number): Promise<void> {
+  const sessionId = c.var.sessionId
+  if (!sessionId) return
+  const pairing = await getPairingBySessionId(sessionId)
+  if (!pairing) return
+  await setState(userStateKey(sessionId, 'navigation'), {
+    screen: 'products',
+    params: { q, page },
+    _writeId: `${Date.now()}`,
+  })
+}
+
 const app = new Hono<AppEnv>()
   .get('/', async (c) => {
     const page = readPage(c)
     const { products, hasMore } = await loadProductsPage(page)
+    await syncListNavigation(c, '', page)
     return render(c, 'products/index', {
       products: pagedProducts(c, products, page, hasMore),
       // Total > PER_PAGE: the over-fetched extra row proves it on page 1;
@@ -121,6 +145,7 @@ const app = new Hono<AppEnv>()
     const page = readPage(c)
     const pattern = namePrefixPattern(q)
     const { products, hasMore } = await loadProductsPage(page, pattern)
+    await syncListNavigation(c, q, page)
     return render(c, 'products/index', {
       products: pagedProducts(c, products, page, hasMore),
       // Only called when the list exceeds PER_PAGE (the client switches to

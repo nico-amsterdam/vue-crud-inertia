@@ -50,12 +50,13 @@ screens                                             # GET  /agent/screens — sc
 data                                                # GET  /agent/data    — row data for the current screen
 form                                                # GET  /agent/form    — the browser's last new/edit form submission: values + the errors the UI showed
 navigate <screen> [paramsJson]                      # POST /agent/navigate — browser will Inertia-visit that route
+product_list [--q <namePrefix>] [--page <n>]        # GET  /agent/products — one page of products (100 per page), name-prefix filter, agent twin of /products/findbyname
 product_create  '<productJson>'                     # POST /agent/products
 product_update <id> '<productJson>'                   # PATCH /agent/products/:id — FULL replacement: send name, description AND price every time
 product_delete <id>                                 # DELETE /agent/products/:id
 ```
 
-Known screens (`browser polls GET /agent/navigate` and follows them): `products`, `products/new`, `products/edit` (param `id`), `products/delete` (param `id`).
+Known screens (`browser polls GET /agent/navigate` and follows them): `products`, `products/new`, `products/edit` (param `id`), `products/delete` (param `id`). `products` always visits the plain `/products` list — `q`/`page` params on the navigate command are not used by the browser (use `product_list` for filtered agent-side reads).
 
 ## Product payload
 
@@ -64,6 +65,20 @@ bun scripts/agent-cli.ts product_create '{"productName":"Widget","description":"
 bun scripts/agent-cli.ts product_update 7 '{"productName":"Widget 2","description":"Better","price":9.99}'
 bun scripts/agent-cli.ts product_delete 7
 ```
+
+## Listing products (`product_list`)
+
+`GET /agent/products` accepts `q` (name prefix) and `page` (1-based) — the agent twin of the UI's `/products/findbyname`:
+
+```bash
+bun scripts/agent-cli.ts product_list                          # first page, unfiltered
+bun scripts/agent-cli.ts product_list --q 'Pro'                # names starting with "Pro"
+bun scripts/agent-cli.ts product_list --q 'Pro' --page 2       # second page of that filter
+```
+
+It returns `{ q, page, products, hasMore }` where `products` are name-sorted products (100 per page, `PER_PAGE` in `src/routes/products/store.ts`). `q` matches the **starting letters** of the product name (SQL `LIKE …%`, case-insensitive ASCII) — this is a prefix filter, not a substring search, and unlike the small client-side list there is no description/price matching. `q` is clamped to the maximum name length; an empty `q` is the unfiltered list. When `hasMore: true`, fetch the next page with `--page <n+1>`; once `hasMore` is `false` you have seen everything matching `q`.
+
+Both runners accept `--q`/`--page` the same way (`python3 scripts/agent-cli.py product_list --q 'Pro' --page 2`).
 
 `edit` is a **complete replacement, not a partial merge**: PATCH here means "send the full valid product". Omitted fields are applied as their empty defaults (`description` → `""`, `price` → cleared) — the "missing = keep current value" merge-patch convention does **not** apply. Safe pattern: call `data` (or `GET` the list) first and send back the row you fetched with your one field changed.
 
@@ -76,10 +91,12 @@ Validation failures return `400 {"errors": {...}}` before reaching SQLite confli
 ## Conventions and gotchas
 
 - `AGENT_DISABLED=1` (server env) switches the whole agent feature off: every `/agent/*` endpoint answers `404` and the UI hides its pairing section. If every call suddenly 404s, that flag is set — ask the user, don't retry.
+- `AGENT_ENABLED` (server env) is a comma-separated capability allow-list: unset means everything is allowed; if it is set and does not list `products`, the product commands (`product_list`, `product_create`, `product_update`, `product_delete`) answer `403 {"error":"Agent capability 'products' is not in AGENT_ENABLED"}` while `screen`/`data`/`form`/`navigate` keep working — ask the user to add `products` to `AGENT_ENABLED`.
 - The CLI exits non-zero with `status, body` on any error; script around that, and treat a 401 "pairing window expired" as "ask the user to re-pair".
 - `.agent-session.json` lives in the repo root — never commit nor echo its contents on a shared machine; `logout` deletes it.
 - Deleting the browser session (logout link), removing the pairing in the UI, or the paired user logging out invalidates the code immediately (row deleted server-side).
 - The CLI never sends CSRF tokens — none needed for pairing-code requests. If you see `403 Invalid CSRF token`, you bypassed the CLI and sent the browser's cookie instead: don't.
 - To find out where the user currently is (screen + id) call `screen` first; `data` returns the same screen's dataset (product or product list, `null` for screens without data).
+- On the `products` list screen, `params` mirror what the user is looking at: the browser's visits to `/products/findbyname` and its "load more" scrolls sync `q` (name prefix) and `page` into the server state, and `data` serves that filtered page — not just page 1. A plain `/products` load resets `q` to `""` and `page` to its value rather than leaving a stale filter behind.
 - After `navigate`, the change happens in the user's browser asynchronously (Inertia visit via the 2 s poll). Poll `screen` until it reflects the target before assuming success (a couple of seconds is usually enough).
 - To refresh the screen you are already on, navigate to it again (e.g. `navigate products`).

@@ -22,6 +22,13 @@ afterAll(() => {
 })
 
 describe('agent products capability gate (AGENT_ENABLED)', () => {
+  test('GET /agent/products (list/search) returns 403 when products is not enabled', async () => {
+    process.env.AGENT_ENABLED = 'screens,navigate'
+    const res = await products.request('/?q=pro&page=2')
+    expect(res.status).toBe(403)
+    expect(await res.json()).toEqual({ error: "Agent capability 'products' is not in AGENT_ENABLED" })
+  })
+
   test('POST /agent/products (new) returns 403 when products is not enabled', async () => {
     process.env.AGENT_ENABLED = 'screens,navigate'
     const res = await products.request('/', {

@@ -15,6 +15,7 @@ import json
 import os
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Any
@@ -144,9 +145,11 @@ def build_parser() -> argparse.ArgumentParser:
         description="Drive this app's UI/data as an external AI agent (pairing-code auth).",
         epilog=(
             "Commands: login, logout, screen, data, form, screens, navigate, "
-            "product_create, product_update, product_delete\n"
+            "product_list, product_create, product_update, product_delete\n"
             "form       — the browser session's last new/edit form submission "
             "(values + the errors the UI showed)\n"
+            "product_list — one page of products (8 per page), optionally "
+            "filtered by the starting letters of the name (--q)\n"
             "product_update sends the FULL product as a complete replacement — "
             "omitted description/price are cleared"
         ),
@@ -184,6 +187,22 @@ def build_parser() -> argparse.ArgumentParser:
         help='JSON params, e.g. \'{"id": 1}\' (edit/delete screens need id)',
     )
 
+    listing = sub.add_parser(
+        "product_list",
+        help="list products (name-prefix filter + page number)",
+    )
+    listing.add_argument(
+        "--q",
+        default="",
+        help="name prefix; matches the starting letters of the product name",
+    )
+    listing.add_argument(
+        "--page",
+        type=int,
+        default=1,
+        help="1-based page number (the response carries a hasMore flag)",
+    )
+
     create = sub.add_parser("product_create", help="create a product")
     create.add_argument("product", nargs="?", default="{}", help="product JSON, e.g. '{\"productName\": \"Pen\"}'")
 
@@ -211,6 +230,12 @@ def main() -> None:
         screen = args.screen
         params = parse_json_arg(args.params, "parameters JSON") if args.params is not None else {}
         request("POST", "/agent/navigate", {"screen": screen, "params": params})
+        return
+    if args.command == "product_list":
+        query = {"q": args.q}
+        if args.page != 1:
+            query["page"] = args.page
+        request("GET", f"/agent/products?{urllib.parse.urlencode(query)}")
         return
     if args.command == "product_create":
         request("POST", "/agent/products", parse_json_arg(args.product, "product JSON"))
