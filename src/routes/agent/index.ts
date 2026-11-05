@@ -171,15 +171,15 @@ const app = new Hono<AppEnv>()
     return c.json({ ok: true })
   })
   .get('/screens', (c) => c.json(SCREENS))
-  .get('/data', async (c) => {
-    const nav = await getState(c, 'navigation')
-    const screen = nav?.screen ?? 'products'
-    return c.json({ screen, data: await loadProductScreenData(screen, nav?.params) })
-  })
   .get('/form', async (c) => {
     // The browser session's last new/edit form submission, captured by the
     // products routes into shared app_state: { screen, id, values, errors, ... }.
     return c.json(await getState(c, 'lastSubmission'))
+  })
+  .get('/data', async (c) => {
+    const nav = await getState(c, 'navigation')
+    const screen = nav?.screen ?? 'products'
+    return c.json({ screen, data: await loadProductScreenData(screen, nav?.params) })
   })
   .route('/products', products)
 
