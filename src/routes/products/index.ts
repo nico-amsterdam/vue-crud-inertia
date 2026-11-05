@@ -286,5 +286,4 @@ const app = new Hono<AppEnv>()
     return c.redirect('/products', 303)
   })
 
-export type AppType = typeof app
 export default app

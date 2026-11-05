@@ -1,6 +1,6 @@
 import type { MiddlewareHandler } from 'hono'
 
-export type RateLimitOptions = {
+type RateLimitOptions = {
   /** Length of the fixed window in milliseconds. */
   windowMs: number
   /** Maximum requests per key within one window. */

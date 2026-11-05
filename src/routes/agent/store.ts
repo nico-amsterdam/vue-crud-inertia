@@ -2,7 +2,7 @@ import { and, eq, gt, lt, or } from 'drizzle-orm'
 import { getDB, tables } from '@/db/index'
 
 /** Browser polls /agent/navigate every 2s; the heartbeat is persisted at most once per minute. */
-export const AGENT_HEARTBEAT_INTERVAL_MS = 60_000
+const AGENT_HEARTBEAT_INTERVAL_MS = 60_000
 
 /** Agents are refused when the paired browser has not polled for 5 minutes. */
 export const AGENT_IDLE_TIMEOUT_MS = 5 * 60_000
@@ -12,10 +12,10 @@ export const AGENT_IDLE_TIMEOUT_MS = 5 * 60_000
  * after the browser misses the keep-alive for 5 minutes, so nothing can ever
  * touch a session again. Doubled to stay safely above clock skew.
  */
-export const APP_STATE_TTL_MS = 2 * AGENT_IDLE_TIMEOUT_MS
+const APP_STATE_TTL_MS = 2 * AGENT_IDLE_TIMEOUT_MS
 
 /** Row shape returned by getPairing. */
-export type PairingRow = {
+type PairingRow = {
   code: string
   login: string
   session_id: string
@@ -95,7 +95,7 @@ export async function touchPairing(identifier: string): Promise<void> {
  *
  * @param ageMs age threshold; rows with updated_at older than now - ageMs will be deleted.
  */
-export async function cleanupAppState(ageMs: number): Promise<void> {
+async function cleanupAppState(ageMs: number): Promise<void> {
   const cutoff = new Date(Date.now() - ageMs)
   await getDB().delete(tables.appState).where(lt(tables.appState.updatedAt, cutoff))
 }
@@ -124,7 +124,7 @@ export async function setState(key: string, value: any): Promise<void> {
   // once a minute; failures are swallowed — a real write must never fail because
   // housekeeping failed. Rows never expire "just in time": explicit re-pairing
   // overwrites, the heartbeats above keep fresh rows alive (deletion is purely
-  // age-based), and `bun run cleanup:state` trims the rest from the command line.
+  // age-based), so stale rows are only ever trimmed by this sampled sweep.
   if (Math.random() < 1 / 32) {
     await cleanupAppState(APP_STATE_TTL_MS).catch(() => {})
   }

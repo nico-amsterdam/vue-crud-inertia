@@ -74,7 +74,7 @@ function convertProductDateType<Field extends ProductDateField>(
  * that the the backend has to return errors about incorrect types.
  * Runtime checks are necessairy though, to catch manipulated input.
  */
-export function convertProductFieldTypes(
+function convertProductFieldTypes(
   payload: unknown
 ): { valid: true; data: ProductBaseType } | { valid: false; errors: ProductErrorsType } {
   const errors: ProductErrorsType = {}
@@ -108,7 +108,7 @@ export function convertProductFieldTypes(
  * - modifiedAt: business rules (already validated for validity)
  *
  */
-export function validateProduct(
+function validateProduct(
   product: ProductBaseType
 ): { valid: true; data: ProductBaseType } | { valid: false; errors: Record<string, string> } {
   const errors: Record<string, string> = {}

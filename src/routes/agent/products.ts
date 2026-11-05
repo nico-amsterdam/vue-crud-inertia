@@ -7,7 +7,7 @@ import { createProduct, deleteProduct, getProductById, loadProductsPage, namePre
 import { MAX_PAGE, readPage } from '@/routes/products'
 
 /** Fallback "user" attribution for product writes done through the agent API. */
-export const DEFAULT_AGENT_USER = 'agent'
+const DEFAULT_AGENT_USER = 'agent'
 
 /** The agent screens showing product data. */
 export const PRODUCT_SCREENS: Record<string, AgentScreenMeta> = {
@@ -54,7 +54,7 @@ export async function loadProductScreenData(
  * (/agent/products*, the list/search GET and the write routes); everything
  * not listed answers 403.
  */
-export const isAgentProductsDisabled = (): boolean => {
+const isAgentProductsDisabled = (): boolean => {
   const list = process.env.AGENT_ENABLED
   if (list === undefined) return false
   return !list.split(',').some((entry) => entry.trim().toLowerCase() === 'products')

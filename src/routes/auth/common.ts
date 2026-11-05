@@ -14,7 +14,7 @@ export type UserType = {
   avatar_url: string
 }
 
-export type SessionCookieType = {
+type SessionCookieType = {
   id: string
   login: string
   name: string
@@ -33,7 +33,7 @@ export const AUTH_PATH = '/auth'
 
 export const LOGIN_PATH = AUTH_PATH + '/login'
 
-export const SESSION_COOKIE = 'SESSION'
+const SESSION_COOKIE = 'SESSION'
 
 /** Secret used to sign the session cookie and to calculate the OAuth state HMAC.
  *  In production the app refuses to start unless SESSION_SECRET is set. */
@@ -43,7 +43,7 @@ export const SESSION_SECRET = requireSecret('SESSION_SECRET', DEV_SESSION_SECRET
  * Functions
  */
 
-export function isHttps(c: Context): boolean {
+function isHttps(c: Context): boolean {
   return c.req.header('x-forwarded-proto') === 'https'
 }
 
@@ -96,7 +96,7 @@ export async function clearSession(c: Context): Promise<void> {
   deleteCookie(c, SESSION_COOKIE, { path: '/' })
 }
 
-export function stripAgent(c: Context): string {
+function stripAgent(c: Context): string {
   return stripMobileDesktopFromUserAgent(c.req.header('user-agent'))
 }
 

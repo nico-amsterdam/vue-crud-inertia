@@ -4,7 +4,6 @@ import type { AppEnv } from '@/types/env'
 import { generateSecureRandomString, getIp } from '@/lib/security'
 import { readSession } from '@/routes/auth/common'
 import {
-  AGENT_HEARTBEAT_INTERVAL_MS,
   AGENT_IDLE_TIMEOUT_MS,
   getPairing,
   getPairingBySessionId,
@@ -19,20 +18,18 @@ import {
 import products, { PRODUCT_SCREENS, loadProductScreenData } from './products'
 import { DEV_SESSION_ID } from '@/routes/auth'
 
-export { AGENT_HEARTBEAT_INTERVAL_MS, AGENT_IDLE_TIMEOUT_MS }
-
 /*
  * Constants
  */
 
-export const AGENT_PAIRING_HEADER = 'x-pairing-code'
+const AGENT_PAIRING_HEADER = 'x-pairing-code'
 
 const MUTATING_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE']
 
 /** Metadata describing an agent screen in the `SCREENS` mapping. */
 export type AgentScreenMeta = { route: string; context: string[] }
 
-export const SCREENS: Record<string, AgentScreenMeta> = {
+const SCREENS: Record<string, AgentScreenMeta> = {
   ...PRODUCT_SCREENS,
 }
 

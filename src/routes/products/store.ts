@@ -6,13 +6,13 @@ import type { ProductBaseType, ProductType } from '@/types/product'
  * Database-backed product store
  */
 
-export type DBProduct = typeof tables.products.$inferSelect
+type DBProduct = typeof tables.products.$inferSelect
 
 export const DEFAULT_USER = 'system'
 
 /** Products per page. Above this list size the list is paginated with infinite scroll
  *  and filtering moves to the server (`/products/findbyname`). */
-export const PER_PAGE = 100
+const PER_PAGE = 100
 
 export function toProduct(dbProduct: DBProduct): ProductType {
   return {
@@ -75,10 +75,10 @@ export function priceToCents(price: number | null): number | null {
  *  - `not-found` (updateProduct only): no row matched — the id does not exist,
  *    or the optimistic-concurrency condition in verify mode failed.
  *  - `write-failed`: the driver threw for some other reason. */
-export type CreateProductResult =
+type CreateProductResult =
   | { ok: true; product: DBProduct }
   | { ok: false; reason: 'duplicate-name' | 'write-failed' }
-export type UpdateProductResult =
+type UpdateProductResult =
   | { ok: true; product: DBProduct }
   | { ok: false; reason: 'not-found' | 'duplicate-name' | 'write-failed' }
 

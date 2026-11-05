@@ -184,8 +184,8 @@ base.use(middleware)
 
 /*
  * Routes are mounted with chaining so their types are part of the app,
- * which allows using the Hono RPC client (`hc<AppType>()`).
- * See https://hono.dev/docs/guides/best-practices#building-a-larger-application
+ * which keeps route typing composable (see
+ * https://hono.dev/docs/guides/best-practices#building-a-larger-application)
  */
 export const app = base
   .get('/', (c) => c.redirect('/products'))
@@ -212,5 +212,3 @@ app.onError(async (error, c) => {
   console.error(`Unhandled error on ${c.req.method} ${c.req.path}:`, error)
   return errorPage(c, 'errors/internalerror', 500)
 })
-
-export type AppType = typeof app
