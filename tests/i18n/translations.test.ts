@@ -119,3 +119,50 @@ describe('newLocale', () => {
     expect(newLocale('en').t('Delete {0} {1}', 'a', 'b')).toBe('Delete a b')
   })
 })
+
+describe('translations source', () => {
+  it('defines no duplicate keys in any language table', async () => {
+    // Duplicate keys in an object literal collapse silently (the last one wins),
+    // so neither the imported object nor tsc can flag them. This test parses the
+    // source text of the translations file instead.
+    const source = await Bun.file(new URL('../../src/i18n/translations.ts', import.meta.url)).text()
+
+    const lines = source.split('\n')
+    const duplicates: string[] = []
+    const blocks: string[] = []
+    let lang: string | null = null
+    const seen = new Map<string, number>()
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]
+
+      if (lang === null) {
+        // A language table opening: "  en: {"
+        const open = line.match(/^  ([a-z]+): \{$/)
+        if (open) {
+          blocks.push(open[1])
+          lang = open[1]
+          seen.clear()
+          continue
+        }
+      }
+
+      if (lang === null) continue
+
+      // A key row inside the block: "    'Key': 'Value'," (handles escaped quotes)
+      const key = line.match(/^    '((?:[^'\\]|\\.)*)':/)?.[1]
+      if (key) {
+        if (seen.has(key)) duplicates.push(`${lang}: '${key}' (line ${seen.get(key)} and ${i + 1})`)
+        else seen.set(key, i + 1)
+        continue
+      }
+
+      // The block closes at "  }," or the file-final "  }"
+      if (/^  \},?$/.test(line)) lang = null
+    }
+
+    // Sanity: every expected language table was found (en + every other language)
+    expect(blocks.sort()).toEqual([...ALL_LANGUAGES].sort())
+    expect(duplicates).toEqual([])
+  })
+})

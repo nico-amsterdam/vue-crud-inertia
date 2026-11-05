@@ -28,3 +28,4 @@ src/generated/
 
 # agent-cli saved pairing code (scripts/agent-cli.ts)
 .agent-session.json
+__pycache__/
