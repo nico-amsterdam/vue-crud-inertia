@@ -154,9 +154,9 @@ After changing `src/db/schema.ts`, run `bun migrate:create` again and commit the
 
 ## Setup Google and GitHub authentication
 
-[Setup Google](https://github.com/nico-amsterdam/bun-htmx-crud/blob/main/auth-setup-google.md)
+[Setup Google](https://github.com/nico-amsterdam/bun-htmx-crud/blob/cloudflare-d1/auth-setup-google.md)
 
-[Setup GitHub](https://github.com/nico-amsterdam/bun-htmx-crud/blob/main/auth-setup-github.md)
+[Setup GitHub](https://github.com/nico-amsterdam/bun-htmx-crud/blob/cloudflare-d1/auth-setup-github.md)
 
 In .env set your GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET
 
