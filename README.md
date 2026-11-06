@@ -45,7 +45,7 @@
 
 Application template with [Inertia](https://inertiajs.com/), [Vue 3](https://vuejs.org/), [Hono](https://hono.dev/) and [Bun](https://bun.com/), with the option to deploy it on Cloudflare, so everything can run on the edge in the cloud. A commandline interface (CLI) allows you to connect your own AI agent and share a session; navigate the app, and read/edit/add/delete rows with the same validations and restrictions as via the UI.
 
-You can [use this project](https://github.com/new?template_name=vue-crud-nuxt&template_owner=nico-amsterdam) as a starter.
+You can [use this project](https://github.com/new?template_name=vue-crud-inertia&template_owner=nico-amsterdam) as a starter.
 
 There is a demo on https://vue-inertia-crud.nico-amsterdam.workers.dev/. Login with your Google or GitHub account.
 
