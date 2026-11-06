@@ -21,7 +21,7 @@ const authUser = computed(() => page.props.authUser ?? null)
 // Shared prop comes from server.ts (AGENT_DISABLED=1 -> false). Default true so
 // share() payloads that predate the flag keep showing the agent section.
 const agentEnabled = computed(() => page.props.agentEnabled !== false)
-const darkmode = ref(false)
+const darkMode = ref(window.matchMedia('(prefers-color-scheme: dark)').matches)
 const networkErrDialog = ref<HTMLDialogElement | null>(null)
 const { pairingCode, pairingStage, agentActive, createPairingCode, copyPairingCode, removePairingCode } = useAgentPairing()
 
@@ -54,7 +54,7 @@ async function startAgentPairing() {
 }
 
 function toggleDark() {
-  darkmode.value = !darkmode.value
+  darkMode.value = !darkMode.value
 }
 
 function onNetworkError() {
@@ -85,7 +85,7 @@ onUnmounted(() => {
   document.removeEventListener('inertia:networkError', onNetworkError)
 })
 
-watch(darkmode, (value) => {
+watch(darkMode, (value) => {
   document.body.classList.toggle('dark', value)
 }, { immediate: true })
 </script>
@@ -99,10 +99,10 @@ watch(darkmode, (value) => {
         <h1>Vue CRUD Inertia</h1>
         <span class="color-scheme">
           <LanguageSwitcher />
-          <button v-if="!darkmode" type="button" class="dark-mode-toggle" :title="t('Toggle dark mode')" @click="toggleDark">
+          <button v-if="!darkMode" type="button" class="dark-mode-toggle" :title="t('Toggle dark mode')" @click="toggleDark">
             <Icon aria-hidden="true" icon="tabler:sun" width="1.5em" class="sun" />
           </button>
-          <button v-if="darkmode" type="button" class="dark-mode-toggle" :title="t('Toggle dark mode')" @click="toggleDark">
+          <button v-if="darkMode" type="button" class="dark-mode-toggle" :title="t('Toggle dark mode')" @click="toggleDark">
             <Icon aria-hidden="true" icon="tabler:moon" width="1.5em" class="moon" />
           </button>
           <span v-if="authUser" class="user">
