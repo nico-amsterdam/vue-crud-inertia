@@ -4,7 +4,7 @@
 
 - ⛅ **Cloud**: Deploy to Cloudflare without any hassle
 - 🔐 **Authentication**: Login with Google or GitHub. Easy setup instructions
-- 🤖 **AI access**: Share your session with your AI agent
+- 🤖 **AI access**: Share your session with your AI agent. Offering a great [Agent Experience](https://agentexperience.ax/concepts/principles-of-ax/) (AX).
 - 🧩 **Lightweight web framework**: Hono is tiny, has built-in middleware and clean APIs
 - ✨ **Modern user interface**: Vue 3 single-page interface
 - ⚡ **Inertia**: Server-side routing and data for the Vue client
