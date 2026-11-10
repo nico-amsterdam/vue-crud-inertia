@@ -5,9 +5,9 @@ description: Drive this app's UI/data as an external agent via scripts/agent-cli
 
 # agent-cli — controlling the app as an external agent
 
-Run everything from the project root with **either** runner — they implement the same commands and share `.agent-session.json`, so you can log in with one and call with the other:
+Run with **either** runner — they implement the same commands and, when started from the same directory, share `.agent-session.json`, so you can log in with one and call with the other.
 
-The CLI scripts are located in [`scripts/`](https://github.com/nico-amsterdam/vue-crud-inertia/tree/main/scripts) (`agent-cli.ts` and `agent-cli.py`).
+The CLI scripts are standalone and live in [`scripts/`](https://github.com/nico-amsterdam/vue-crud-inertia/tree/main/scripts) (`agent-cli.ts` and `agent-cli.py`): download them from GitHub and run them from **any local directory** — no clone of the app's repository is needed. The connection to the app is made via `--base-url` (default `http://localhost:8787`, or the `AGENT_BASE_URL` env var). Since `.agent-session.json` is written to the **current working directory**, always start the CLI from the **same directory** within one agent session, otherwise `login` saves the pairing code in one place and later commands can't find it.
 
 ```bash
 bun scripts/agent-cli.ts <command>      # Bun
@@ -45,7 +45,7 @@ Mouse-less/bot-only flow is impossible: `POST /agent/pairing/create` is rejected
 ## Commands
 
 ```
-login    --pairing-code <code> [--base-url <url>]   # save to .agent-session.json (gitignored repo root); a GET /agent/screen probe verifies the code and URL — 401 removes the saved file
+login    --pairing-code <code> [--base-url <url>]   # save to .agent-session.json (in the current working directory); a GET /agent/screen probe verifies the code and URL — 401 removes the saved file
 logout                                              # remove the saved pairing code
 screen                                              # GET  /agent/screen  — current screen name + params + route
 screens                                             # GET  /agent/screens — screen registry (route + context keys)
@@ -95,7 +95,7 @@ Validation failures return `400 {"errors": {...}}` before reaching SQLite confli
 - `AGENT_DISABLED=1` (server env) switches the whole agent feature off: every `/agent/*` endpoint answers `404` and the UI hides its pairing section. If every call suddenly 404s, that flag is set — ask the user, don't retry.
 - `AGENT_ENABLED` (server env) is a comma-separated capability allow-list: unset means everything is allowed; if it is set and does not list `products`, the product commands (`product_list`, `product_create`, `product_update`, `product_delete`) answer `403 {"error":"Agent capability 'products' is not in AGENT_ENABLED"}` while `screen`/`data`/`form`/`navigate` keep working — ask the user to add `products` to `AGENT_ENABLED`.
 - The CLI exits non-zero with `status, body` on any error; script around that, and treat a 401 "pairing window expired" as "ask the user to re-pair".
-- `.agent-session.json` lives in the repo root — never commit nor echo its contents on a shared machine; `logout` deletes it.
+- `.agent-session.json` is created in the directory you start the CLI from — never echo its contents on a shared machine; `logout` deletes it. Stay in that one directory for the whole session, or commands won't find the saved login.
 - Deleting the browser session (logout link), removing the pairing in the UI, or the paired user logging out invalidates the code immediately (row deleted server-side).
 - The CLI never sends CSRF tokens — none needed for pairing-code requests. If you see `403 Invalid CSRF token`, you bypassed the CLI and sent the browser's cookie instead: don't.
 - To find out where the user currently is (screen + id) call `screen` first; `data` returns the same screen's dataset (product or product list, `null` for screens without data).
