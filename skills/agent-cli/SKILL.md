@@ -7,6 +7,8 @@ description: Drive this app's UI/data as an external agent via scripts/agent-cli
 
 Run everything from the project root with **either** runner — they implement the same commands and share `.agent-session.json`, so you can log in with one and call with the other:
 
+The CLI scripts are located in [`scripts/`](https://github.com/nico-amsterdam/vue-crud-inertia/tree/main/scripts) (`agent-cli.ts` and `agent-cli.py`).
+
 ```bash
 bun scripts/agent-cli.ts <command>      # Bun
 python3 scripts/agent-cli.py <command>  # Python 3.10+, stdlib only (argparse/urllib)
