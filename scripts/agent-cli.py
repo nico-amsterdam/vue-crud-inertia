@@ -148,7 +148,7 @@ def build_parser() -> argparse.ArgumentParser:
             "product_list, product_create, product_update, product_delete\n"
             "form       — the browser session's last new/edit form submission "
             "(values + the errors the UI showed)\n"
-            "product_list — one page of products (8 per page), optionally "
+            "product_list — one page of products (100 per page), optionally "
             "filtered by the starting letters of the name (--q)\n"
             "product_update sends the FULL product as a complete replacement — "
             "omitted description/price are cleared"

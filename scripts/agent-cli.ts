@@ -113,6 +113,6 @@ switch (cmd) {
   default:
     console.log('Commands: login, logout, screen, data, form, screens, navigate, product_list, product_create, product_update, product_delete')
     console.log('form       — the browser session\'s last new/edit form submission (values + the errors the UI showed)')
-    console.log('product_list [--q <name prefix>] [--page <n>] — one page of products (8 per page); like the UI\'s "find by name" filter')
+    console.log('product_list [--q <name prefix>] [--page <n>] — one page of products (100 per page); like the UI\'s "find by name" filter')
     console.log('product_update sends the FULL product as a complete replacement — omitted description/price are cleared')
 }
