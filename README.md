@@ -91,6 +91,7 @@ answers 404 (the routes are effectively turned off) **and** the UI hides its age
 ## Directory structure
 
 ```text
+├── api-docs/              # OpenAPI schema for AI agent interface
 ├── e2e/                   # Playwright end-to-end tests
 ├── migrations/            # database migrations (generated per deployment)
 ├── public/                # public assets
