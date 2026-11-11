@@ -6,10 +6,12 @@
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "vue-inertia-crud",
 	"main": "src/index.ts",
-	"compatibility_date": "2026-10-06",
+	"compatibility_date": "2026-11-11",
 	"compatibility_flags": [
 		"nodejs_compat"
 	],
+	"workers_dev": true,
+	"preview_urls": false,
 	"alias": {
 		"node:module": "./src/shims/node-module.ts"
 	},
@@ -63,8 +65,7 @@
 	"d1_databases": [
 		{
 			"binding": "DB",
-			"database_name": "inertia-crud",
-			"database_id": "YOUR DATABASE ID"
+			"database_name": "inertia-crud"
 		}
 	],
 	/**
