@@ -180,19 +180,9 @@ export const statePostRoute: DescribeRouteOptions = {
   }),
 }
 
-export const pairingCreateRoute: DescribeRouteOptions = {
-  description: 'Create (or return the existing) pairing code for the current browser session.',
-  responses: withAuth({
-    200: { description: 'The pairing code', content: json(z.object({ code: z.string() })) },
-  }),
-}
-
-export const pairingRemoveRoute: DescribeRouteOptions = {
-  description: 'Remove the pairing code of the current browser session.',
-  responses: withAuth({
-    200: { description: 'Pairing removed', content: json(z.object({ ok: z.boolean() })) },
-  }),
-}
+/** Pairing lifecycle is browser-UI-only: creating/removing pairing codes is
+ *  intentionally not documented in the OpenAPI spec — agents authenticate
+ *  with an existing `x-pairing-code` header. */
 
 export const screensRoute: DescribeRouteOptions = {
   description: 'The screen registry: route templates and context keys per screen name.',

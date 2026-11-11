@@ -22,8 +22,6 @@ import {
   formRoute,
   navigateGetRoute,
   navigatePostRoute,
-  pairingCreateRoute,
-  pairingRemoveRoute,
   screenRoute,
   screensRoute,
   statePostRoute,
@@ -162,7 +160,7 @@ const app = new Hono<AppEnv>()
     }
     return c.json({ ok: true })
   })
-  .post('/pairing/create', describeRoute(pairingCreateRoute), async (c) => {
+  .post('/pairing/create', async (c) => {
     const user = c.var.authUser
     const sessionId = c.var.sessionId
     if (!user || !sessionId) return c.json({ error: 'Not authenticated' }, 401)
@@ -174,7 +172,7 @@ const app = new Hono<AppEnv>()
     await upsertPairing(newCode, user.login, sessionId)
     return c.json({ code: newCode })
   })
-  .delete('/pairing/remove', describeRoute(pairingRemoveRoute), async (c) => {
+  .delete('/pairing/remove', async (c) => {
     const sessionId = c.var.sessionId
     if (sessionId) await removePairing(sessionId)
     return c.json({ ok: true })
@@ -201,10 +199,10 @@ app.get('/openapi.json', openAPIRouteHandler(app, {
         title: 'Agent API',
         version: '1.0.0',
         description:
-          'JSON API for a paired external agent. Authenticate with the `x-pairing-code` '
-          + 'header (POST /agent/pairing/create from the logged-in browser session) — '
-          + 'browser session cookies work too. Mutating methods additionally require '
-          + '`x-csrf-token` when authenticating with a session cookie.',
+          'JSON API for a paired external agent. Every request authenticates with the '
+          + '`x-pairing-code` header — the code is IP-pinned and expires after 5 minutes '
+          + 'of inactivity (the paired browser must keep polling). Pairing codes are '
+          + 'created and removed from the logged-in browser UI, not through this API.',
       },
       servers: [{ url: '/agent' }],
       components: {
