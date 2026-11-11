@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import type { Context, MiddlewareHandler } from 'hono'
+import { describeRoute, openAPIRouteHandler } from 'hono-openapi'
 import type { AppEnv } from '@/types/env'
 import { generateSecureRandomString, getIp } from '@/lib/security'
 import { readSession } from '@/routes/auth/common'
@@ -16,6 +17,17 @@ import {
   userStateKey,
 } from './store'
 import products, { PRODUCT_SCREENS, loadProductScreenData } from './products'
+import {
+  dataRoute,
+  formRoute,
+  navigateGetRoute,
+  navigatePostRoute,
+  pairingCreateRoute,
+  pairingRemoveRoute,
+  screenRoute,
+  screensRoute,
+  statePostRoute,
+} from './openapi'
 import { DEV_SESSION_ID } from '@/routes/auth'
 
 /*
@@ -111,13 +123,13 @@ async function setState(c: Context, key: string, value: any): Promise<void> {
  */
 
 const app = new Hono<AppEnv>()
-  .get('/screen', async (c) => {
+  .get('/screen', describeRoute(screenRoute), async (c) => {
     const nav = await getState(c, 'navigation')
     const screen = nav?.screen ?? null
     const meta = screen ? SCREENS[screen] ?? null : null
     return c.json({ screen, params: nav?.params ?? {}, context: meta?.context ?? [], route: meta?.route ?? null })
   })
-  .post('/navigate', async (c) => {
+  .post('/navigate', describeRoute(navigatePostRoute), async (c) => {
     const body = await c.req.json().catch(() => ({}))
     const screen = body?.screen
     if (!screen || !SCREENS[screen]) return c.json({ error: 'Unknown screen' }, 400)
@@ -126,12 +138,12 @@ const app = new Hono<AppEnv>()
     await setState(c, 'navigate', { screen, params: body?.params ?? {}, _writeId: `${Date.now()}` })
     return c.json({ ok: true, screen })
   })
-  .get('/navigate', async (c) => {
+  .get('/navigate', describeRoute(navigateGetRoute), async (c) => {
     const cmd = await getState(c, 'navigate')
     if (cmd) await setState(c, 'navigate', null)
     return c.json(cmd ?? null)
   })
-  .post('/state', async (c) => {
+  .post('/state', describeRoute(statePostRoute), async (c) => {
     const body = await c.req.json().catch(() => ({}))
     const nav = body?.navigation
     if (nav) {
@@ -150,7 +162,7 @@ const app = new Hono<AppEnv>()
     }
     return c.json({ ok: true })
   })
-  .post('/pairing/create', async (c) => {
+  .post('/pairing/create', describeRoute(pairingCreateRoute), async (c) => {
     const user = c.var.authUser
     const sessionId = c.var.sessionId
     if (!user || !sessionId) return c.json({ error: 'Not authenticated' }, 401)
@@ -162,22 +174,51 @@ const app = new Hono<AppEnv>()
     await upsertPairing(newCode, user.login, sessionId)
     return c.json({ code: newCode })
   })
-  .delete('/pairing/remove', async (c) => {
+  .delete('/pairing/remove', describeRoute(pairingRemoveRoute), async (c) => {
     const sessionId = c.var.sessionId
     if (sessionId) await removePairing(sessionId)
     return c.json({ ok: true })
   })
-  .get('/screens', (c) => c.json(SCREENS))
-  .get('/form', async (c) => {
+  .get('/screens', describeRoute(screensRoute), (c) => c.json(SCREENS))
+  .get('/form', describeRoute(formRoute), async (c) => {
     // The browser session's last new/edit form submission, captured by the
     // products routes into shared app_state: { screen, id, values, errors, ... }.
     return c.json(await getState(c, 'lastSubmission'))
   })
-  .get('/data', async (c) => {
+  .get('/data', describeRoute(dataRoute), async (c) => {
     const nav = await getState(c, 'navigation')
     const screen = nav?.screen ?? 'products'
     return c.json({ screen, data: await loadProductScreenData(screen, nav?.params) })
   })
+  .route('/products', products)
+
+// The OpenAPI spec route is registered outside the chain because the
+// openAPIRouteHandler needs the finished `app` reference. Registered after
+// `/screen`… but matched by its exact path, so it cannot shadow anything.
+app.get('/openapi.json', openAPIRouteHandler(app, {
+    documentation: {
+      info: {
+        title: 'Agent API',
+        version: '1.0.0',
+        description:
+          'JSON API for a paired external agent. Authenticate with the `x-pairing-code` '
+          + 'header (POST /agent/pairing/create from the logged-in browser session) — '
+          + 'browser session cookies work too. Mutating methods additionally require '
+          + '`x-csrf-token` when authenticating with a session cookie.',
+      },
+      servers: [{ url: '/agent' }],
+      components: {
+        securitySchemes: {
+          PairingCode: {
+            type: 'apiKey',
+            in: 'header',
+            name: 'x-pairing-code',
+          },
+        },
+      },
+      security: [{ PairingCode: [] }],
+    },
+  }))
   .route('/products', products)
 
 export default app

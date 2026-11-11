@@ -1,10 +1,12 @@
 import { Hono } from 'hono'
+import { describeRoute } from 'hono-openapi'
 import type { AppEnv } from '@/types/env'
 import type { AgentScreenMeta } from './index'
 import type { ProductType } from '@/types/product'
 import { MAX_NAME_LENGTH, parseProductPayload } from '@/routes/products/validation'
 import { createProduct, deleteProduct, getProductById, loadProductsPage, namePrefixPattern, toProduct, updateProduct } from '@/routes/products/store'
 import { MAX_PAGE, readPage } from '@/routes/products'
+import { productCreateRoute, productDeleteRoute, productListRoute, productUpdateRoute } from './openapi'
 
 /** Fallback "user" attribution for product writes done through the agent API. */
 const DEFAULT_AGENT_USER = 'agent'
@@ -69,13 +71,13 @@ const products = new Hono<AppEnv>()
   })
   // JSON twin of the UI's /products/findbyname route: the same name-prefix
   // filter (starting letters) and pagination, but for agent callers.
-  .get('/', async (c) => {
+  .get('/', describeRoute(productListRoute), async (c) => {
     const q = (c.req.query('q') ?? '').slice(0, MAX_NAME_LENGTH)
     const page = readPage(c)
     const { products: pageProducts, hasMore } = await loadProductsPage(page, namePrefixPattern(q))
     return c.json({ q, page, products: pageProducts, hasMore })
   })
-  .post('/', async (c) => {
+  .post('/', describeRoute(productCreateRoute), async (c) => {
     const body = await c.req.json().catch(() => null)
     if (!body) return c.json({ error: 'Invalid body' }, 400)
     const result = parseProductPayload(body)
@@ -91,7 +93,7 @@ const products = new Hono<AppEnv>()
     }
     return c.json({ ok: true, product: toProduct(created.product) })
   })
-  .patch('/:id', async (c) => {
+  .patch('/:id', describeRoute(productUpdateRoute), async (c) => {
     // PATCH here means COMPLETE REPLACEMENT, not partial merge: validateProduct
     // requires the full valid product and omitted fields clear to their empty
     // defaults (description → '', price → null). Documented in the CLI help
@@ -112,7 +114,7 @@ const products = new Hono<AppEnv>()
     }
     return c.json({ ok: true, product: toProduct(updated.product) })
   })
-  .delete('/:id', async (c) => {
+  .delete('/:id', describeRoute(productDeleteRoute), async (c) => {
     const id = Number(c.req.param('id'))
     await deleteProduct(id)
     return c.json({ ok: true })

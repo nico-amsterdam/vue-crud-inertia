@@ -64,6 +64,8 @@ Protocol notes:
 
 > **Full agent-CLI usage guide: [`skills/agent-cli/SKILL.md`](skills/agent-cli/SKILL.md)** — pairing flow, the 5-minute keep-alive window, all commands (`login/screen/data/form/screens/navigate/product_*`), payload conventions and gotchas. Read it before driving the app as an external agent.
 >
+> **OpenAPI spec**: `GET /agent/openapi.json` (OpenAPI 3.1, same `requireAgentAuth` as the rest of `/agent/*` — pairing code header or browser session). Descriptors live in `src/routes/agent/openapi.ts`; new agent endpoints must be documented there with `describeRoute(...)`.
+>
 > Both `scripts/agent-cli.ts` (Bun) and `scripts/agent-cli.py` (Python 3.10+, stdlib only) implement this CLI with the same commands; they share the same `.agent-session.json`, so you can log in with either client.
 
 ## Database
