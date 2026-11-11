@@ -41,9 +41,19 @@
 +-------------------------------------------------------------+
 ```
 
+## Video: connect the web application with your AI agent
+
+This video explains how to link a web application session to your AI agent. 
+It walks through the commands the agent can run, demonstrates how it interacts with the application, 
+and shows how a spreadsheet can be used to import new products.
+
+https://github.com/user-attachments/assets/2e77b685-fc83-4336-8761-b7e5377c4fef
+
+
+
 ## About this project
 
-Application template with [Inertia](https://inertiajs.com/), [Vue 3](https://vuejs.org/), [Hono](https://hono.dev/) and [Bun](https://bun.com/), with the option to deploy it on Cloudflare, so everything can run on the edge in the cloud. A commandline interface (CLI) allows you to connect your own AI agent and share a session; navigate the app, and read/edit/add/delete rows with the same validations and restrictions as via the UI.
+Application template with [Inertia](https://inertiajs.com/), [Vue 3](https://vuejs.org/), [Hono](https://hono.dev/) and [Bun](https://bun.com/), with the option to deploy it on Cloudflare, so everything can run on the edge in the cloud. A commandline interface (CLI) allows you to connect your own AI agent and share a session; navigate the app, and read/edit/add/delete rows with the same validations and restrictions as you via the UI.
 
 You can [use this project](https://github.com/new?template_name=vue-crud-inertia&template_owner=nico-amsterdam) as a starter.
 
